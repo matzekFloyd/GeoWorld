@@ -1,0 +1,27 @@
+TO-DO Liste
+
+HOHE PRIORITÄT:
+
+- BOSS ENTWEDER BEIM COUNTER MEHR HOCHZÄHLEN, ODER STÄRKER, BZW IRGENDEINEN GRUND DER IHN KILLENSWERT MACHT
+
+MITTLERE PRIORITÄT
+- DMG Anzeige von wo er kommt
+- Links+Rechts neben fadenkreuz dmgtaken und heal werte anzeigen lassen
+
+NIEDRIGE PRIORITÄT
+
+- Wenn per Bloodritual Mana über maxmana erhalten werden würde, blinkt Balken kurz über Maxlänge hinaus
+- lifesteal funktioniert bei sprayshot nicht zu 100%
+- Größe des sichtbaren Explosionsradius von Meteor an Lvl anpassen
+- Blutflecken ein und ausfaden
+- FreezeTime nicht auf alle, sondern in einem Umkreis um Player
+- BattleLog
+
+
+
+BALANCING
+
+- Max Level auf 50 setzen
+- Gegner Zahl minimal rauf drehen
+- error siehe Screenshot
+- lifesteal ein wenig schwächer machen

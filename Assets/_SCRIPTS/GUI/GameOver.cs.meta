@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 05986f8600b980148832c13c18677219
+timeCreated: 1473606715
+licenseType: Free
+MonoImporter:
+  serializedVersion: 2
+  defaultReferences:
+  - gameOverTexture: {instanceID: 0}
+  - blackTexture: {instanceID: 0}
+  - text: {fileID: 11413462, guid: 7350a3e8d0678a7428d0598442f2e0dc, type: 2}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
