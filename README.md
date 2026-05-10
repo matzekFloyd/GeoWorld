@@ -82,6 +82,38 @@ These reflect how the game was built historically—not necessarily current Unit
 
 Do **not** set the build output to the project root. Use a subfolder, e.g. `Builds/Windows` or `Builds/WebGL`.
 
+## WebGL CI and Netlify
+
+GitHub Actions builds **WebGL** with [game-ci `unity-builder`](https://game.ci/docs/github/builder) and deploys the static output to [Netlify](https://www.netlify.com/) on:
+
+- pushes to **`master`** or **`main`**
+- tags matching **`v*`** (e.g. `v1.0.0`), including release tags you push from git—avoid duplicating a separate “on release” trigger so the workflow does not run twice for the same tag
+- manual runs (**Actions → WebGL → Netlify → Run workflow**)
+
+The build output path in CI is **`Build/WebGL/`** (see `.github/workflows/webgl-netlify.yml`). Root [`netlify.toml`](netlify.toml) sets caching and compression-related headers for typical Unity WebGL files. If you use **Brotli/Gzip** compression and the build still fails to load, enable **Player Settings → Publishing Settings → Decompression Fallback** (see Unity’s WebGL hosting docs), or adjust headers to match your exact output filenames.
+
+### GitHub repository secrets
+
+| Secret | Purpose |
+|--------|---------|
+| `UNITY_EMAIL` | Unity ID email (same as [activation](https://game.ci/docs/github/activation)). |
+| `UNITY_PASSWORD` | Unity ID password. GameCI recommends avoiding special characters in this password. |
+| `UNITY_LICENSE` | **Personal:** full contents of the license `.ulf` file from manual activation. **Not** used the same way for Pro—see GameCI “Professional license”. |
+| `NETLIFY_AUTH_TOKEN` | Netlify personal access token (Dashboard → User settings → Applications → Personal access tokens). |
+| `NETLIFY_SITE_ID` | Site ID (Site configuration → Site details → Site ID). |
+
+**Unity Pro / Plus:** follow GameCI’s professional license env vars and add a repository secret `UNITY_SERIAL`, then extend the workflow’s `env` on the `game-ci/unity-builder` step with `UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}` (do **not** add `UNITY_LICENSE` for the Pro flow if GameCI’s docs say to omit it for your license type).
+
+### Netlify site settings
+
+1. Create a site (empty starter is fine). **Build command** and **publish directory** in the UI are optional if you **only** deploy from GitHub Actions—the CLI `--dir=Build/WebGL` publishes artifacts directly.
+2. Ensure the GitHub repo has the secrets above. The first successful workflow run should attach a production deploy to that site.
+3. If you use **multithreaded WebGL**, you may need **COOP/COEP** headers; see commented block in `netlify.toml` and Unity’s threading/hosting notes before enabling.
+
+### Docker image availability
+
+The workflow uses `unityVersion: auto` (reads `ProjectSettings/ProjectVersion.txt`). If CI reports a missing `unityci/editor` image for your exact patch version, check [GameCI Docker versions](https://game.ci/docs/docker/versions) or set `customImage` / `unityVersion` on the builder step to a published tag.
+
 ## Contributing / picking it back up
 
 1. Open **`GeoWorldMain`** from `Assets/_SCENES` (or run from **`Start`** and press **G**).  
