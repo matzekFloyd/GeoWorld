@@ -1,5 +1,7 @@
 using UnityEngine;
+#if !(UNITY_WEBGL && !UNITY_EDITOR && ENABLE_LEGACY_INPUT_MANAGER)
 using UnityEngine.InputSystem;
+#endif
 
 /// <summary>
 /// Gameplay input façade. Bindings load from <c>Resources/Input/GeoWorldInputActions</c> (JSON via <see cref="InputActionAsset.LoadFromJson"/>).
@@ -9,6 +11,7 @@ public static class GameInput
 {
     const string JsonResourcePath = "Input/GeoWorldInputActions";
 
+#if !(UNITY_WEBGL && !UNITY_EDITOR && ENABLE_LEGACY_INPUT_MANAGER)
     /// <summary>Holds runtime instance when loaded from JSON (not an imported <see cref="InputActionAsset"/>).</summary>
     static InputActionAsset s_LoadedAsset;
 
@@ -21,6 +24,7 @@ public static class GameInput
     static InputAction s_SkillFreezeTime;
     static InputAction s_PauseOrQuit;
     static InputAction s_DebugLevelUp;
+#endif
 
     /// <summary>Default Fire1 name (legacy Input Manager); gameplay uses the Input System asset.</summary>
     public const string FirePrimary = "Fire1";
@@ -35,6 +39,33 @@ public static class GameInput
 
     public const int MouseButtonSecondary = 1;
 
+#if UNITY_WEBGL && !UNITY_EDITOR && ENABLE_LEGACY_INPUT_MANAGER
+    /// <summary>
+    /// WebGL: Reading Input System actions and legacy <see cref="UnityEngine.Input"/> in the same frame can recurse
+    /// through the WASM/JS boundary and exceed the browser stack. Use legacy only for player builds here.
+    /// </summary>
+    public static bool FirePrimaryDown => UnityEngine.Input.GetButtonDown(FirePrimary);
+
+    public static bool SkillHealUp => UnityEngine.Input.GetKeyUp(SkillHeal);
+    public static bool SkillMeteorUp => UnityEngine.Input.GetKeyUp(SkillMeteor);
+    public static bool SkillBloodRitualUp => UnityEngine.Input.GetKeyUp(SkillBloodRitual);
+    public static bool SkillFreezeTimeUp => UnityEngine.Input.GetKeyUp(SkillFreezeTime);
+
+    public static bool DebugInstantLevelUpUp
+    {
+        get
+        {
+#if !UNITY_EDITOR && !DEVELOPMENT_BUILD
+            return false;
+#else
+            return UnityEngine.Input.GetKeyUp(DebugInstantLevelUp);
+#endif
+        }
+    }
+
+    public static bool PauseOrQuitUp => UnityEngine.Input.GetKeyUp(PauseOrQuit);
+    public static bool SecondaryMouseDown => UnityEngine.Input.GetMouseButtonDown(MouseButtonSecondary);
+#else
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
     static void Bootstrap()
     {
@@ -198,4 +229,5 @@ public static class GameInput
 #endif
         }
     }
+#endif
 }

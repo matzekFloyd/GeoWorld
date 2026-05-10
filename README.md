@@ -48,6 +48,7 @@ Enemy behaviour lives under `Assets/_SCRIPTS/Behaviour/` (`EnemyAI`, `GreaterEne
 2. Save the file. **`GameInput`** loads **`Resources`** path **`Input/GeoWorldInputActions`** at runtime; no code changes for rebinding.
 3. Optional: copy the JSON to a **`.inputactions`** file elsewhere in the project if you want Unity’s **Input Actions** visual editor, then paste changes back into **`GeoWorldInputActions.txt`** when done.
 4. **Player settings**: Gameplay uses the **new Input System**; **Standard Assets** still use the **legacy** manager. The repo includes an Editor script that sets **Project Settings → Player → Active Input Handling** to **Both** so both stacks work. If you reset project settings, set **Both** again (or **Input System Package + Old**). **`GameInput`** also falls back to **`UnityEngine.Input`** when **`ENABLE_LEGACY_INPUT_MANAGER`** is defined, so skills and mouse still work if the new backend is not active (e.g. project stuck on **Input Manager (Old)** only).
+5. **WebGL player builds**: **`GameInput`** uses **legacy `Input` only** (no `InputAction` reads) to avoid a **maximum call stack** / WASM–JS re-entrancy issue when mixing the two backends in the browser. Rebinding via **`GeoWorldInputActions.txt`** applies to **non-WebGL** targets; WebGL uses the default **Fire1** / **Q,E,R,F** / mouse buttons from the **Input Manager** (`ProjectSettings/InputManager.asset`).
 
 ## Repository layout
 
