@@ -5,29 +5,40 @@ public class GeoBlastProjectile : GeoBlast
 {
     private float lifestealPerHit;
 
-    // Use this for initialization
+    GeoBlast _ownerGeoBlast;
+    PlayerCharacter _ownerPlayer;
+
     void Start()
     {
         Destroy(this.gameObject, 0.5f);
+        if (player != null)
+        {
+            _ownerGeoBlast = player.GetComponent<GeoBlast>();
+            _ownerPlayer = player.GetComponent<PlayerCharacter>();
+        }
     }
 
-    // Update is called once per frame
     void Update()
     {
-        lifestealPerHit = player.GetComponent<GeoBlast>().getGeoBlastDmg() / 5;
+        if (_ownerGeoBlast == null)
+            return;
+        lifestealPerHit = _ownerGeoBlast.getGeoBlastDmg() / 5;
     }
 
     void OnCollisionEnter(Collision something)
     {
+        if (_ownerGeoBlast == null || _ownerPlayer == null)
+            return;
+
         if (something.gameObject.tag == "Enemy" && geoManiaActivated())
         {
-            something.gameObject.GetComponent<EnemyAI>().getDamaged(player.GetComponent<GeoBlast>().getGeoBlastDmg());
+            something.gameObject.GetComponent<EnemyAI>().getDamaged(_ownerGeoBlast.getGeoBlastDmg());
             Destroy(this.gameObject);
-            player.GetComponent<PlayerCharacter>().changeCurrentHealth(lifestealPerHit);
+            _ownerPlayer.changeCurrentHealth(lifestealPerHit);
         }
         else if (something.gameObject.tag == "Enemy")
         {
-            something.gameObject.GetComponent<EnemyAI>().getDamaged(player.GetComponent<GeoBlast>().getGeoBlastDmg());
+            something.gameObject.GetComponent<EnemyAI>().getDamaged(_ownerGeoBlast.getGeoBlastDmg());
             Destroy(this.gameObject);
         }
 
