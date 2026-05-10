@@ -47,6 +47,36 @@ public class GameOver : MonoBehaviour {
         player = GameObject.FindGameObjectWithTag("Player1");
         if (player != null)
             m_Player = player.GetComponent<PlayerCharacter>();
+        LayoutTopRightHudCounters();
+    }
+
+    /// <summary>
+    /// Pin round timer and kill counters to the top-right (scene references may leave them mid-canvas).
+    /// </summary>
+    void LayoutTopRightHudCounters()
+    {
+        const float insetX = 14f;
+        const float insetY = 14f;
+        const float lineHeight = 32f;
+        float y = -insetY;
+        AnchorTopRightLine(textTimer, new Vector2(-insetX, y));
+        y -= lineHeight;
+        AnchorTopRightLine(textEnemyCounter, new Vector2(-insetX, y));
+        y -= lineHeight;
+        AnchorTopRightLine(textGreaterEnemyCounter, new Vector2(-insetX, y));
+    }
+
+    static void AnchorTopRightLine(Text t, Vector2 anchoredPosition)
+    {
+        if (t == null)
+            return;
+        var rt = t.rectTransform;
+        rt.anchorMin = rt.anchorMax = new Vector2(1f, 1f);
+        rt.pivot = new Vector2(1f, 1f);
+        rt.anchoredPosition = anchoredPosition;
+        t.alignment = TextAnchor.UpperRight;
+        t.horizontalOverflow = HorizontalWrapMode.Overflow;
+        t.verticalOverflow = VerticalWrapMode.Overflow;
     }
 
     // Update is called once per frame
@@ -75,7 +105,15 @@ public class GameOver : MonoBehaviour {
             if (textEnemyCounter != null) textEnemyCounter.enabled = false;
             if (textGreaterEnemyCounter != null) textGreaterEnemyCounter.enabled = false;
 
-        } else
+            if (playerDied)
+                ApplyEndGameUi("Game Over! You died!");
+            else
+                ApplyEndGameUi("Congratulations! You saved GeoWorld!");
+
+            SetQuitInstructions();
+            HandleQuitRequest();
+        }
+        else
         {
             timeLeft -= Time.deltaTime;
             if (textTimer != null)
@@ -88,34 +126,14 @@ public class GameOver : MonoBehaviour {
 
     }
 
-    void OnGUI()
+    void ApplyEndGameUi(string title)
     {
-        if (playerDied)
-        {
-            if (scoreBoardTextEnemies != null)
-                scoreBoardTextEnemies.text = "Enemies killed: " + enemyKillCounter;
-            if (scoreBoardTextGreaterEnemies != null)
-                scoreBoardTextGreaterEnemies.text = "Greater Enemies killed: " + greaterEnemyKillCounter;
-            if (gameOverText != null)
-                gameOverText.text = "Game Over! You died!";
-
-            SetQuitInstructions();
-            HandleQuitRequest();
-
-         } else if (gameTimeIsOver)
-        {
-            if (scoreBoardTextEnemies != null)
-                scoreBoardTextEnemies.text = "Enemies killed: " + enemyKillCounter;
-            if (scoreBoardTextGreaterEnemies != null)
-                scoreBoardTextGreaterEnemies.text = "Greater Enemies killed: " + greaterEnemyKillCounter;
-            if (gameOverText != null)
-                gameOverText.text = "Congratulations! You saved GeoWorld!";
-
-            SetQuitInstructions();
-            HandleQuitRequest();
-
-        }
-
+        if (scoreBoardTextEnemies != null)
+            scoreBoardTextEnemies.text = "Enemies killed: " + enemyKillCounter;
+        if (scoreBoardTextGreaterEnemies != null)
+            scoreBoardTextGreaterEnemies.text = "Greater Enemies killed: " + greaterEnemyKillCounter;
+        if (gameOverText != null)
+            gameOverText.text = title;
     }
 
     void SetQuitInstructions()

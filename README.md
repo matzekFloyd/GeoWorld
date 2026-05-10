@@ -22,11 +22,18 @@ Main scenes (under `Assets/_SCENES/`):
 | **`PlayerCharacter`** | Level, XP curve, mana, health regen, leveling scales enemy stats via **`EnemyGenerator`**. Warns if the **`Spawn`** tag is missing (generator dependency). |
 | **`EnemyGenerator`** | State machine (`Initialize` → `Setup` → `SpawnEnemy`): target living count and thresholds read **`GameBalanceHelper`** (from the active **`GameBalance`** asset or defaults). Boss instances from **`spawnEndBoss`** get **`EnemyCharacter.isBoss`** set at spawn. |
 | **`SkillBasic` + skills** | Shared mana/cooldown helpers; cache **`PlayerCharacter`** / **`GameOver`** where refactored; input keys go through **`GameInput`**; skills respect **`GameOver`** when dead or time over. |
-| **`UserInterface`** | Legacy **`OnGUI`** HUD (bars, skill icons, crosshair, blood splats) with cached player / **`GameOver`** / skill refs to avoid per-frame **`GetComponent`**. |
-| **`GameOver`** | Timer from balance, kill UI (**Unity UI `Text`**, null-safe), end screens. **Escape** uses **`GameInput`**. **WebGL**: no **`Application.Quit`**; copy prompts the player to close the tab. Standalone/editor use quit or exit play mode as appropriate. |
+| **`UserInterface`** | Drives the gameplay **uGUI** HUD: bars, skill columns, crosshair, and low-health vignette. Reads player/skills in **`Update`** and pushes strings/fill amounts into **`GameplayHudView`** with dirty checks (no **`OnGUI`** on the hot path). |
+| **`GameplayHudView`** | **`UnityEngine.UI`** Canvas built at runtime as a child **`GameplayHUD`** (see **Gameplay HUD** below). Hosts fullscreen skill flashes (heal / blood ritual / freeze) and caches **`Sprite`** instances per texture. |
+| **`GameOver`** | Timer from balance, kill UI (**Unity UI `Text`**, null-safe), end screens. End-of-round copy updates in **`Update`** (no **`OnGUI`**). **Escape** uses **`GameInput`**. **WebGL**: no **`Application.Quit`**; copy prompts the player to close the tab. Standalone/editor use quit or exit play mode as appropriate. |
 | **`BackgroundMusic`** | **`AudioSource`** loop; optional **`alternateTracks`** + random pick (pool includes **`backGroundMusic`** when set), **`playbackVolume`**. Subclasses **`GameOver`** only to stop on game-over flags (legacy layout). |
 
 Enemy behaviour lives under `Assets/_SCRIPTS/Behaviour/` (`EnemyAI`, `GreaterEnemyAI`, `HomingMissileAI`, etc.).
+
+### Gameplay HUD (uGUI)
+
+- **Where it lives:** The same GameObject that has **`UserInterface`** (and usually **`GameOver`**) — often on the **player** in **`GeoWorldMain`**. At runtime, **`UserInterface`** ensures a **`GameplayHudView`** component on that object and creates a child **`GameplayHUD`** with a **Screen Space Overlay** Canvas, **`CanvasScaler`** (reference **2020×1136**, ~**95%** UI scale on 1080p vs. a 1920×1080 reference), bars, an 8-column skill strip, crosshair, low-health vignette, and fullscreen FX **`Image`**s.
+- **Scripts:** `Assets/_SCRIPTS/GUI/GameplayHudView.cs` (layout + widgets), `Assets/_SCRIPTS/GUI/UserInterface.cs` (data + dirty refresh). **`HealSelf`**, **`BloodRitual`**, and **`FreezeTime`** push fullscreen overlays through **`GameplayHudView.Instance`** in **`LateUpdate`** (no **`OnGUI`**).
+- **Customization:** Open **`GeoWorldMain`** in the Editor, select the object with **`UserInterface`**, expand **`GameplayHUD`** after entering Play once (or duplicate that subtree into `Assets/_PREFABS/` if you want a prefab-driven layout). Re-assign **`UserInterface`**’s **`Texture2D`** fields as before for bar/skill art.
 
 ## Tuning & configuration
 

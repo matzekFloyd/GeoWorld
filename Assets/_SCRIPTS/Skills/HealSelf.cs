@@ -67,12 +67,13 @@ public class HealSelf : SkillBasic {
         return healingAmount;
     }
 
-    void OnGUI()
+    void LateUpdate()
     {
-        if (showHealTexture && m_GameOver != null && !m_GameOver.playerDied && !m_GameOver.gameTimeIsOver)
-        {
-            GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), healTexture);
-        }
+        var hud = GameplayHudView.Instance;
+        if (hud == null)
+            return;
+        bool on = showHealTexture && m_GameOver != null && !m_GameOver.playerDied && !m_GameOver.gameTimeIsOver;
+        hud.ConfigureHealFlash(on, healTexture);
     }
 
     protected void calculateHealTextureCooldown()
