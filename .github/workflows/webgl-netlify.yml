@@ -49,10 +49,12 @@ jobs:
           targetPlatform: WebGL
           unityVersion: auto
           buildsPath: Build
-          # Deterministic output: Build/WebGL/ (platform folder from game-ci)
+          # game-ci default buildName equals targetPlatform ("WebGL"), so output is
+          # Build/WebGL/WebGL/. Use an explicit name so publish root is Build/WebGL/<name>/.
+          buildName: GeoWorld
 
       - name: Deploy to Netlify (production)
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
-        run: npx --yes netlify-cli@17.38.0 deploy --prod --dir=Build/WebGL
+        run: npx --yes netlify-cli@17.38.0 deploy --prod --dir=Build/WebGL/GeoWorld

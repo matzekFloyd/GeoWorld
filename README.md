@@ -90,7 +90,7 @@ GitHub Actions builds **WebGL** with [game-ci `unity-builder`](https://game.ci/d
 - tags matching **`v*`** (e.g. `v1.0.0`), including release tags you push from git—avoid duplicating a separate “on release” trigger so the workflow does not run twice for the same tag
 - manual runs (**Actions → WebGL → Netlify → Run workflow**)
 
-The build output path in CI is **`Build/WebGL/`** (see `.github/workflows/webgl-netlify.yml`). Root [`netlify.toml`](netlify.toml) sets caching and compression-related headers for typical Unity WebGL files. If you use **Brotli/Gzip** compression and the build still fails to load, enable **Player Settings → Publishing Settings → Decompression Fallback** (see Unity’s WebGL hosting docs), or adjust headers to match your exact output filenames.
+The WebGL player output in CI is **`Build/WebGL/GeoWorld/`** (platform folder + `buildName`; see `.github/workflows/webgl-netlify.yml`). Netlify must publish **that** folder so `index.html` is at the site root—publishing only `Build/WebGL/` leaves a nested folder and yields a **Page not found** on `/`. Root [`netlify.toml`](netlify.toml) sets caching and compression-related headers for typical Unity WebGL files. If you use **Brotli/Gzip** compression and the build still fails to load, enable **Player Settings → Publishing Settings → Decompression Fallback** (see Unity’s WebGL hosting docs), or adjust headers to match your exact output filenames.
 
 ### GitHub repository secrets
 
@@ -113,6 +113,11 @@ The build output path in CI is **`Build/WebGL/`** (see `.github/workflows/webgl-
 ### Docker image availability
 
 The workflow uses `unityVersion: auto` (reads `ProjectSettings/ProjectVersion.txt`). If CI reports a missing `unityci/editor` image for your exact patch version, check [GameCI Docker versions](https://game.ci/docs/docker/versions) or set `customImage` / `unityVersion` on the builder step to a published tag.
+
+### Troubleshooting: “Page not found” on Netlify
+
+- **Wrong publish folder:** The playable files must sit at the **root** of the deployed directory (see **`Build/WebGL/GeoWorld/`** above). Deploying the parent `Build/WebGL/` folder alone nests `index.html` one level down.
+- **Netlify’s own Git builds:** If the site is also connected to GitHub for automatic builds, Netlify may deploy the raw repo (no WebGL build) after your Action runs and **overwrite** a good deploy. Prefer **stopping Netlify builds** / disconnecting repo deploys when using **only** CLI deploy from Actions.
 
 ## Contributing / picking it back up
 
