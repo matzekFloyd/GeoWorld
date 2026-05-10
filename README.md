@@ -40,7 +40,14 @@ Enemy behaviour lives under `Assets/_SCRIPTS/Behaviour/` (`EnemyAI`, `GreaterEne
 | Asset / script | Purpose |
 |----------------|---------|
 | **`GameBalance`** (`Assets → Create → GeoWorld → Game Balance`) | Round length, `enemiesPerPlayerLevel`, greater/boss level rules, boss HP/XP multipliers and score bonus. Assign the asset on the **`GameOver`** component’s **`gameBalance`** field; if empty, **`GameBalanceHelper`** keeps the historical defaults. |
-| **`GameInput`** (`Assets/_SCRIPTS/Config/GameInput.cs`) | Single place for skill keys, pause/quit, and **`Fire1`** / mouse button indices (legacy Input Manager). |
+| **`GameInput`** (`Assets/_SCRIPTS/Config/GameInput.cs`) | Façade over the **Input System**: loads JSON from **`Assets/Resources/Input/GeoWorldInputActions.txt`** via **`InputActionAsset.LoadFromJson`**. Exposes the same static API as before (`FirePrimaryDown`, skill `*Up`, `PauseOrQuitUp`, etc.). |
+
+### Changing default bindings (keyboard / mouse)
+
+1. Edit **`Assets/Resources/Input/GeoWorldInputActions.txt`**. It is standard **Input Actions** JSON (same format as a `.inputactions` file). Adjust paths under the **Gameplay** map’s **`bindings`** (e.g. **FirePrimary** → `<Mouse>/leftButton`, skills **Q/E/R/F**, **PauseOrQuit** → `<Keyboard>/escape`, **DebugLevelUp** → **T**).
+2. Save the file. **`GameInput`** loads **`Resources`** path **`Input/GeoWorldInputActions`** at runtime; no code changes for rebinding.
+3. Optional: copy the JSON to a **`.inputactions`** file elsewhere in the project if you want Unity’s **Input Actions** visual editor, then paste changes back into **`GeoWorldInputActions.txt`** when done.
+4. **Player settings**: Gameplay uses the **new Input System**; **Standard Assets** still use the **legacy** manager. The repo includes an Editor script that sets **Project Settings → Player → Active Input Handling** to **Both** so both stacks work. If you reset project settings, set **Both** again (or **Input System Package + Old**). **`GameInput`** also falls back to **`UnityEngine.Input`** when **`ENABLE_LEGACY_INPUT_MANAGER`** is defined, so skills and mouse still work if the new backend is not active (e.g. project stuck on **Input Manager (Old)** only).
 
 ## Repository layout
 
@@ -51,7 +58,7 @@ Assets/
   _ASSETS/, _PREFABS/, _TERRAIN/, etc.
   Standard Assets/   # Legacy Unity Standard Assets (effects, water, input, vehicles…)
 Packages/
-  manifest.json      # Includes com.unity.ugui; mostly built-in modules
+  manifest.json      # Includes com.unity.ugui, com.unity.inputsystem; mostly built-in modules
 ProjectSettings/
 ```
 
