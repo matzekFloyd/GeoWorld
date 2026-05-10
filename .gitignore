@@ -16,6 +16,9 @@
 # Never ignore Asset meta data
 !/[Aa]ssets/**/*.meta
 
+# Exception: recovery folder meta must stay ignored (would be re-included by rule above)
+/[Aa]ssets/_[Rr]ecovery.meta
+
 # Uncomment this line if you wish to ignore the Asset Store tools plugin
 # /[Aa]ssets/AssetStoreTools*
 
