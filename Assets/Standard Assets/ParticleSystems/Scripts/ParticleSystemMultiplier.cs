@@ -1,4 +1,3 @@
-using System;
 using UnityEngine;
 
 namespace UnityStandardAssets.Effects
@@ -15,9 +14,11 @@ namespace UnityStandardAssets.Effects
             var systems = GetComponentsInChildren<ParticleSystem>();
             foreach (ParticleSystem system in systems)
             {
-                system.startSize *= multiplier;
-                system.startSpeed *= multiplier;
-                system.startLifetime *= Mathf.Lerp(multiplier, 1, 0.5f);
+                var main = system.main;
+                float lifetimeScale = Mathf.Lerp(multiplier, 1, 0.5f);
+                main.startSize = new ParticleSystem.MinMaxCurve(main.startSize.constant * multiplier);
+                main.startSpeed = new ParticleSystem.MinMaxCurve(main.startSpeed.constant * multiplier);
+                main.startLifetime = new ParticleSystem.MinMaxCurve(main.startLifetime.constant * lifetimeScale);
                 system.Clear();
                 system.Play();
             }

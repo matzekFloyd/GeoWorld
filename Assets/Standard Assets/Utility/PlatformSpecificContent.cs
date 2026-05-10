@@ -1,4 +1,3 @@
-using System;
 using UnityEngine;
 #if UNITY_EDITOR
 using UnityEditor;
@@ -34,14 +33,12 @@ namespace UnityStandardAssets.Utility
 
         private void OnEnable()
         {
-            EditorUserBuildSettings.activeBuildTargetChanged += Update;
             EditorApplication.update += Update;
         }
 
 
         private void OnDisable()
         {
-            EditorUserBuildSettings.activeBuildTargetChanged -= Update;
             EditorApplication.update -= Update;
         }
 
