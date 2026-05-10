@@ -6,6 +6,16 @@ public class UserInterface : MonoBehaviour {
     private GameObject player;
     private GameObject enemy;
 
+    private PlayerCharacter m_Player;
+    private GameOver m_GameOver;
+    private GeoShot m_GeoShot;
+    private GeoBlast m_GeoBlast;
+    private GeoPhysics m_GeoPhysics;
+    private HealSelf m_HealSelf;
+    private Meteor m_Meteor;
+    private BloodRitual m_BloodRitual;
+    private FreezeTime m_FreezeTime;
+
     private float curPlayerHealth;
     private float maxPlayerHealth;
     private float playerHealthBarLength;
@@ -50,6 +60,18 @@ public class UserInterface : MonoBehaviour {
     void Start () {
 
         player = GameObject.FindGameObjectWithTag("Player1");
+        if (player != null)
+        {
+            m_Player = player.GetComponent<PlayerCharacter>();
+            m_GeoShot = player.GetComponent<GeoShot>();
+            m_GeoBlast = player.GetComponent<GeoBlast>();
+            m_GeoPhysics = player.GetComponent<GeoPhysics>();
+            m_HealSelf = player.GetComponent<HealSelf>();
+            m_Meteor = player.GetComponent<Meteor>();
+            m_BloodRitual = player.GetComponent<BloodRitual>();
+            m_FreezeTime = player.GetComponent<FreezeTime>();
+        }
+        m_GameOver = GetComponent<GameOver>();
         maxBarLength = Screen.width / 4;
         maxNumberOfSkills = 8;
         skillIconWidth = maxBarLength / maxNumberOfSkills;
@@ -58,21 +80,23 @@ public class UserInterface : MonoBehaviour {
     // Update is called once per frame
     void Update () {
 
-        curPlayerLevel = player.GetComponent<PlayerCharacter>().getCurLevel();
-        maxPlayerLevel = player.GetComponent<PlayerCharacter>().getMaxLevel();
-        curPlayerHealth = player.GetComponent<PlayerCharacter>().getCurHealth();
-        maxPlayerHealth = player.GetComponent<PlayerCharacter>().getMaxHealth();
-        curPlayerMana = player.GetComponent<PlayerCharacter>().getCurMana();
-        maxPlayerMana = player.GetComponent<PlayerCharacter>().getMaxMana();
-        playerExp = player.GetComponent<PlayerCharacter>().getCurExp();
-        playerExpNeededForLevelUp = player.GetComponent<PlayerCharacter>().getExpNeededForLevelUp();
+        if (m_Player == null) return;
+
+        curPlayerLevel = m_Player.getCurLevel();
+        maxPlayerLevel = m_Player.getMaxLevel();
+        curPlayerHealth = m_Player.getCurHealth();
+        maxPlayerHealth = m_Player.getMaxHealth();
+        curPlayerMana = m_Player.getCurMana();
+        maxPlayerMana = m_Player.getMaxMana();
+        playerExp = m_Player.getCurExp();
+        playerExpNeededForLevelUp = m_Player.getExpNeededForLevelUp();
 
         adjustBarLength();
     }
 
     void OnGUI()
     {
-        if(this.gameObject.GetComponent<GameOver>().playerDied == false && this.gameObject.GetComponent<GameOver>().gameTimeIsOver == false)
+        if (m_GameOver != null && !m_GameOver.playerDied && !m_GameOver.gameTimeIsOver && m_Player != null)
         {
             GUI.color = Color.white;
 
@@ -117,21 +141,21 @@ public class UserInterface : MonoBehaviour {
                 GUI.Box(new Rect(110, 90, skillIconWidth, 70), "M1");
                 GUI.DrawTexture(new Rect(110, 110, skillIconWidth, 50), singleShotTexture);
                 GUI.DrawTexture(new Rect(110, 110, skillIconWidth, 50), frameTexture);
-                GUI.Box(new Rect(110, 160, skillIconWidth, 20), "" + player.GetComponent<GeoShot>().manacost.ToString("F0"));
-                GUI.Box(new Rect(110, 180, skillIconWidth, 20), "" + player.GetComponent<GeoShot>().getGeoShotDmg());
+                GUI.Box(new Rect(110, 160, skillIconWidth, 20), "" + m_GeoShot.manacost.ToString("F0"));
+                GUI.Box(new Rect(110, 180, skillIconWidth, 20), "" + m_GeoShot.getGeoShotDmg());
                 GUI.Box(new Rect(110, 200, skillIconWidth, 20), "");
-                GUI.Box(new Rect(110, 220, skillIconWidth, 20), "" + player.GetComponent<GeoShot>().maxCooldown.ToString("F2"));
-                GUI.Box(new Rect(110, 240, skillIconWidth, 20), "" + player.GetComponent<GeoShot>().curCooldown.ToString("F2"));
+                GUI.Box(new Rect(110, 220, skillIconWidth, 20), "" + m_GeoShot.maxCooldown.ToString("F2"));
+                GUI.Box(new Rect(110, 240, skillIconWidth, 20), "" + m_GeoShot.curCooldown.ToString("F2"));
 
                 GUI.Box(new Rect(110 + skillIconWidth, 90, skillIconWidth, 70), backgroundTexture);
                 GUI.Box(new Rect(110 + skillIconWidth, 90, skillIconWidth, 70), "M2");
                 GUI.DrawTexture(new Rect(110 + skillIconWidth, 110, skillIconWidth, 50), sprayShotTexture);
                 GUI.DrawTexture(new Rect(110 + skillIconWidth, 110, skillIconWidth, 50), frameTexture);
-                GUI.Box(new Rect(110 + skillIconWidth, 160, skillIconWidth, 20), "" + player.GetComponent<GeoBlast>().manacost);
-                GUI.Box(new Rect(110 + skillIconWidth, 180, skillIconWidth, 20), "" + player.GetComponent<GeoBlast>().getGeoBlastDmg());
+                GUI.Box(new Rect(110 + skillIconWidth, 160, skillIconWidth, 20), "" + m_GeoBlast.manacost);
+                GUI.Box(new Rect(110 + skillIconWidth, 180, skillIconWidth, 20), "" + m_GeoBlast.getGeoBlastDmg());
                 GUI.Box(new Rect(110 + skillIconWidth, 200, skillIconWidth, 20), "");
-                GUI.Box(new Rect(110 + skillIconWidth, 220, skillIconWidth, 20), "" + player.GetComponent<GeoBlast>().maxCooldown.ToString("F2"));
-                GUI.Box(new Rect(110 + skillIconWidth, 240, skillIconWidth, 20), "" + player.GetComponent<GeoBlast>().curCooldown.ToString("F2"));
+                GUI.Box(new Rect(110 + skillIconWidth, 220, skillIconWidth, 20), "" + m_GeoBlast.maxCooldown.ToString("F2"));
+                GUI.Box(new Rect(110 + skillIconWidth, 240, skillIconWidth, 20), "" + m_GeoBlast.curCooldown.ToString("F2"));
 
                 GUI.Box(new Rect(110 + 2 * skillIconWidth, 90, skillIconWidth, 70), backgroundTexture);
                 GUI.Box(new Rect(110 + 2 * skillIconWidth, 90, skillIconWidth, 70), "");
@@ -139,7 +163,7 @@ public class UserInterface : MonoBehaviour {
                 GUI.DrawTexture(new Rect(110 + 2 * skillIconWidth, 110, skillIconWidth, 50), frameTexture);
                 GUI.Box(new Rect(110 + 2 * skillIconWidth, 160, skillIconWidth, 20), "");
                 GUI.Box(new Rect(110 + 2 * skillIconWidth, 180, skillIconWidth, 20), "");
-                GUI.Box(new Rect(110 + 2 * skillIconWidth, 200, skillIconWidth, 20), "" + player.GetComponent<GeoPhysics>().getGeoPhysicsHealthReg().ToString("F1")+"/s");
+                GUI.Box(new Rect(110 + 2 * skillIconWidth, 200, skillIconWidth, 20), "" + m_GeoPhysics.getGeoPhysicsHealthReg().ToString("F1")+"/s");
                 GUI.Box(new Rect(110 + 2 * skillIconWidth, 220, skillIconWidth, 20), "");
                 GUI.Box(new Rect(110 + 2 * skillIconWidth, 240, skillIconWidth, 20), "");
             }
@@ -151,11 +175,11 @@ public class UserInterface : MonoBehaviour {
                 GUI.DrawTexture(new Rect(110 + 3 * skillIconWidth, 110, skillIconWidth, 50), healTexture);
                 GUI.DrawTexture(new Rect(110 + 3 * skillIconWidth, 110, skillIconWidth, 50), frameTexture);
 
-                GUI.Box(new Rect(110 + 3 * skillIconWidth, 160, skillIconWidth, 20), "" + player.GetComponent<HealSelf>().manacost.ToString("F0"));
+                GUI.Box(new Rect(110 + 3 * skillIconWidth, 160, skillIconWidth, 20), "" + m_HealSelf.manacost.ToString("F0"));
                 GUI.Box(new Rect(110 + 3 * skillIconWidth, 180, skillIconWidth, 20), "");
-                GUI.Box(new Rect(110 + 3 * skillIconWidth, 200, skillIconWidth, 20), "" + player.GetComponent<HealSelf>().getHealingAmount().ToString("F0"));
-                GUI.Box(new Rect(110 + 3 * skillIconWidth, 220, skillIconWidth, 20), "" + player.GetComponent<HealSelf>().maxCooldown.ToString("F0"));
-                GUI.Box(new Rect(110 + 3 * skillIconWidth, 240, skillIconWidth, 20), "" + player.GetComponent<HealSelf>().curCooldown.ToString("F1"));
+                GUI.Box(new Rect(110 + 3 * skillIconWidth, 200, skillIconWidth, 20), "" + m_HealSelf.getHealingAmount().ToString("F0"));
+                GUI.Box(new Rect(110 + 3 * skillIconWidth, 220, skillIconWidth, 20), "" + m_HealSelf.maxCooldown.ToString("F0"));
+                GUI.Box(new Rect(110 + 3 * skillIconWidth, 240, skillIconWidth, 20), "" + m_HealSelf.curCooldown.ToString("F1"));
 
 
             }
@@ -167,11 +191,11 @@ public class UserInterface : MonoBehaviour {
                 GUI.DrawTexture(new Rect(110 + 4 * skillIconWidth, 110, skillIconWidth, 50), fireBallTexture);
                 GUI.DrawTexture(new Rect(110 + 4 * skillIconWidth, 110, skillIconWidth, 50), frameTexture);
 
-                GUI.Box(new Rect(110 + 4 * skillIconWidth, 160, skillIconWidth, 20), "" + player.GetComponent<Meteor>().manacost.ToString("F0"));
-                GUI.Box(new Rect(110 + 4 * skillIconWidth, 180, skillIconWidth, 20), "" + player.GetComponent<Meteor>().getMeteorDamage().ToString("F0"));
+                GUI.Box(new Rect(110 + 4 * skillIconWidth, 160, skillIconWidth, 20), "" + m_Meteor.manacost.ToString("F0"));
+                GUI.Box(new Rect(110 + 4 * skillIconWidth, 180, skillIconWidth, 20), "" + m_Meteor.getMeteorDamage().ToString("F0"));
                 GUI.Box(new Rect(110 + 4 * skillIconWidth, 200, skillIconWidth, 20), "");
-                GUI.Box(new Rect(110 + 4 * skillIconWidth, 220, skillIconWidth, 20), "" + player.GetComponent<Meteor>().maxCooldown.ToString("F1"));
-                GUI.Box(new Rect(110 + 4 * skillIconWidth, 240, skillIconWidth, 20), "" + player.GetComponent<Meteor>().curCooldown.ToString("F1"));
+                GUI.Box(new Rect(110 + 4 * skillIconWidth, 220, skillIconWidth, 20), "" + m_Meteor.maxCooldown.ToString("F1"));
+                GUI.Box(new Rect(110 + 4 * skillIconWidth, 240, skillIconWidth, 20), "" + m_Meteor.curCooldown.ToString("F1"));
 
             }
 
@@ -182,11 +206,11 @@ public class UserInterface : MonoBehaviour {
                 GUI.DrawTexture(new Rect(110 + 5 * skillIconWidth, 110, skillIconWidth, 50), bloodRitualTexture);
                 GUI.DrawTexture(new Rect(110 + 5 * skillIconWidth, 110, skillIconWidth, 50), frameTexture);
 
-                GUI.Box(new Rect(110 + 5 * skillIconWidth, 160, skillIconWidth, 20), "" + player.GetComponent<BloodRitual>().manacost.ToString("F0"));
+                GUI.Box(new Rect(110 + 5 * skillIconWidth, 160, skillIconWidth, 20), "" + m_BloodRitual.manacost.ToString("F0"));
                 GUI.Box(new Rect(110 + 5 * skillIconWidth, 180, skillIconWidth, 20), "");
                 GUI.Box(new Rect(110 + 5 * skillIconWidth, 200, skillIconWidth, 20), "");
-                GUI.Box(new Rect(110 + 5 * skillIconWidth, 220, skillIconWidth, 20), "" + player.GetComponent<BloodRitual>().maxCooldown.ToString("F0"));
-                GUI.Box(new Rect(110 + 5 * skillIconWidth, 240, skillIconWidth, 20), "" + player.GetComponent<BloodRitual>().curCooldown.ToString("F1"));
+                GUI.Box(new Rect(110 + 5 * skillIconWidth, 220, skillIconWidth, 20), "" + m_BloodRitual.maxCooldown.ToString("F0"));
+                GUI.Box(new Rect(110 + 5 * skillIconWidth, 240, skillIconWidth, 20), "" + m_BloodRitual.curCooldown.ToString("F1"));
             }
 
 
@@ -197,11 +221,11 @@ public class UserInterface : MonoBehaviour {
                 GUI.DrawTexture(new Rect(110 + 6 * skillIconWidth, 110, skillIconWidth, 50), freezeTimeTexture);
                 GUI.DrawTexture(new Rect(110 + 6 * skillIconWidth, 110, skillIconWidth, 50), frameTexture);
 
-                GUI.Box(new Rect(110 + 6 * skillIconWidth, 160, skillIconWidth, 20), "" + player.GetComponent<FreezeTime>().manacost.ToString("F0"));
+                GUI.Box(new Rect(110 + 6 * skillIconWidth, 160, skillIconWidth, 20), "" + m_FreezeTime.manacost.ToString("F0"));
                 GUI.Box(new Rect(110 + 6 * skillIconWidth, 180, skillIconWidth, 20), "-");
                 GUI.Box(new Rect(110 + 6 * skillIconWidth, 200, skillIconWidth, 20), "-");
-                GUI.Box(new Rect(110 + 6 * skillIconWidth, 220, skillIconWidth, 20), "" + player.GetComponent<FreezeTime>().maxCooldown.ToString("F0"));
-                GUI.Box(new Rect(110 + 6 * skillIconWidth, 240, skillIconWidth, 20), "" + player.GetComponent<FreezeTime>().curCooldown.ToString("F1"));
+                GUI.Box(new Rect(110 + 6 * skillIconWidth, 220, skillIconWidth, 20), "" + m_FreezeTime.maxCooldown.ToString("F0"));
+                GUI.Box(new Rect(110 + 6 * skillIconWidth, 240, skillIconWidth, 20), "" + m_FreezeTime.curCooldown.ToString("F1"));
             }
 
             if (curPlayerLevel >= 10)

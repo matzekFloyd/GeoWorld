@@ -17,14 +17,15 @@ public class Meteor : SkillBasic {
     // Update is called once per frame
     void Update()
     {
-        maxCooldown = 40f / player.GetComponent<PlayerCharacter>().getCurLevel();
-        manacost = player.GetComponent<PlayerCharacter>().getCurLevel() * 12.5f;
-        meteorDamage = player.GetComponent<PlayerCharacter>().getCurLevel() * 50f;
+        if (m_Player == null) return;
+        maxCooldown = 40f / m_Player.getCurLevel();
+        manacost = m_Player.getCurLevel() * 12.5f;
+        meteorDamage = m_Player.getCurLevel() * 50f;
         updateCoolDown();
 
-        if (player.GetComponent<PlayerCharacter>().skillAvailable(4))
+        if (m_Player.skillAvailable(4))
         {
-            if (Input.GetKeyUp(KeyCode.E) && requiredMana() && this.gameObject.GetComponent<GameOver>().playerDied == false && this.gameObject.GetComponent<GameOver>().gameTimeIsOver == false)
+            if (GameInput.SkillMeteorUp && requiredMana() && CanUseSkills())
             {
                 if (curCooldown == 0)
                 {
@@ -38,7 +39,7 @@ public class Meteor : SkillBasic {
 
     public void shootFireBall()
     {
-        player.GetComponent<PlayerCharacter>().curMana -= manacost;
+        m_Player.curMana -= manacost;
         GameObject shot = (GameObject)Instantiate(meteor, camPos.position + camPos.forward * 5, camPos.rotation);
 
         shot.GetComponent<Rigidbody>().AddForce(camPos.forward * 50, ForceMode.Impulse);

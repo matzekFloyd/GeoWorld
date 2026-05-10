@@ -21,11 +21,12 @@ public class GeoBlast : SkillBasic
     // Update is called once per frame
     void Update()
     {
-        geoBlastDmg = player.GetComponent<PlayerCharacter>().getCurLevel() * 4f;
-        projectileCount = player.GetComponent<PlayerCharacter>().getCurLevel() * 5;
+        if (m_Player == null) return;
+        geoBlastDmg = m_Player.getCurLevel() * 4f;
+        projectileCount = m_Player.getCurLevel() * 5;
         updateCoolDown();
 
-        if (Input.GetMouseButtonDown(1) && requiredMana() && this.gameObject.GetComponent<GameOver>().playerDied == false && this.gameObject.GetComponent<GameOver>().gameTimeIsOver == false)
+        if (GameInput.SecondaryMouseDown && requiredMana() && CanUseSkills())
         {
             if (curCooldown == 0)
             {
@@ -39,7 +40,7 @@ public class GeoBlast : SkillBasic
 
     public void shoot()
     {
-        player.GetComponent<PlayerCharacter>().curMana -= manacost;
+        m_Player.curMana -= manacost;
 
         for(int i = 0; i <= projectileCount; i++)
         {

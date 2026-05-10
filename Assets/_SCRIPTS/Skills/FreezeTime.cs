@@ -35,16 +35,17 @@ public class FreezeTime : SkillBasic
     // Update is called once per frame
     void Update()
     {
-        maxCooldown = 100 / player.GetComponent<PlayerCharacter>().getCurLevel();
+        if (m_Player == null) return;
+        maxCooldown = 100 / m_Player.getCurLevel();
         freezeTextureTimerCooldown = 1.5f;
-        duration = player.GetComponent<PlayerCharacter>().getCurLevel() / 4f;
-        manacost = player.GetComponent<PlayerCharacter>().getCurLevel() * 30;
+        duration = m_Player.getCurLevel() / 4f;
+        manacost = m_Player.getCurLevel() * 30;
         updateCoolDown();
 
 
-        if (player.GetComponent<PlayerCharacter>().skillAvailable(8))
+        if (m_Player.skillAvailable(8))
         {
-            if (Input.GetKeyUp(KeyCode.F) && requiredMana() && this.gameObject.GetComponent<GameOver>().playerDied == false && this.gameObject.GetComponent<GameOver>().gameTimeIsOver == false)
+            if (GameInput.SkillFreezeTimeUp && requiredMana() && CanUseSkills())
             {
                 if (curCooldown == 0)
                 {
@@ -63,7 +64,7 @@ public class FreezeTime : SkillBasic
     public void freezeTime()
     {
 
-        player.GetComponent<PlayerCharacter>().curMana -= manacost;
+        m_Player.curMana -= manacost;
 
         for (int i = 0; i < enemiesToFreeze.Count; i++)
         {
@@ -79,7 +80,7 @@ public class FreezeTime : SkillBasic
 
     void OnGUI()
     {
-        if (showFreezeTexture && this.gameObject.GetComponent<GameOver>().playerDied == false && this.gameObject.GetComponent<GameOver>().gameTimeIsOver == false)
+        if (showFreezeTexture && m_GameOver != null && !m_GameOver.playerDied && !m_GameOver.gameTimeIsOver)
         {
             GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), freezeTexture);
         }

@@ -13,22 +13,22 @@ public class BloodRitual : SkillBasic{
     void Start () {
         curCooldown = 0;
         bloodTimer = 1;
-        player = GameObject.FindGameObjectWithTag("Player1");
         showBloodStain = false;
     }
 
     // Update is called once per frame
     void Update () {
 
-        maxCooldown = 50 / player.GetComponent<PlayerCharacter>().getCurLevel();
+        if (m_Player == null) return;
+        maxCooldown = 50 / m_Player.getCurLevel();
         bloodTimerCooldown = 1.5f;
-        manacost = player.GetComponent<PlayerCharacter>().getCurLevel() * 5;
+        manacost = m_Player.getCurLevel() * 5;
         updateCoolDown();
 
 
-        if (player.GetComponent<PlayerCharacter>().skillAvailable(6))
+        if (m_Player.skillAvailable(6))
         {
-            if (Input.GetKeyUp(KeyCode.R) && requiredMana() && this.gameObject.GetComponent<GameOver>().playerDied == false && this.gameObject.GetComponent<GameOver>().gameTimeIsOver == false)
+            if (GameInput.SkillBloodRitualUp && requiredMana() && CanUseSkills())
             {
                 if (curCooldown == 0)
                 {
@@ -50,21 +50,21 @@ public class BloodRitual : SkillBasic{
     {
         float healthToManaValue;
 
-        if (player.GetComponent<PlayerCharacter>().curMana >= player.GetComponent<PlayerCharacter>().maxMana)
+        if (m_Player.curMana >= m_Player.maxMana)
         {
             healthToManaValue = 0;
         } else
         {
-            healthToManaValue = player.GetComponent<PlayerCharacter>().curHealth / 3.33f;
+            healthToManaValue = m_Player.curHealth / 3.33f;
 
-            player.GetComponent<PlayerCharacter>().curHealth -= healthToManaValue;
-            player.GetComponent<PlayerCharacter>().curMana += healthToManaValue;
+            m_Player.curHealth -= healthToManaValue;
+            m_Player.curMana += healthToManaValue;
         }
      }
 
     void OnGUI()
     {
-        if (showBloodStain && this.gameObject.GetComponent<GameOver>().playerDied == false && this.gameObject.GetComponent<GameOver>().gameTimeIsOver == false)
+        if (showBloodStain && m_GameOver != null && !m_GameOver.playerDied && !m_GameOver.gameTimeIsOver)
         {
             GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), bloodRitualTexture1);
             GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), bloodRitualTexture2);

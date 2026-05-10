@@ -1,9 +1,5 @@
 # GeoWorld
 
-<p align="center">
-  <img src="Icon.png" alt="GeoWorld" width="128" height="128">
-</p>
-
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 Unity **6** project (**6000.4.5f1**). A third-person style **survival / horde** prototype built around a **GeoMancer** player: manage health, mana, and XP on a timer while enemies scale with your level.
@@ -11,7 +7,7 @@ Unity **6** project (**6000.4.5f1**). A third-person style **survival / horde** 
 ## What the game is
 
 - **Core loop**: Stay alive, kill waves of enemies, level up (up to **50** in current player logic), and survive until the round timer expires—or lose if health hits zero.
-- **Round rules** (`GameOver`): **15-minute** countdown (`900` seconds), kill counters for normal and **greater** enemies, game over on death or time up.
+- **Round rules** (`GameOver`): countdown duration, spawn density, greater/boss thresholds, and boss multipliers come from **`GameBalance`** (ScriptableObject) when assigned; **defaults** match the old design (**900** s round, **`level × 40`** target enemies, greater from level **10+**, boss attempts when level is a multiple of **5**). Kill counters cover normal and **greater** enemies; game over on death or time up.
 - **Fantasy hook**: Earth / “geo” themed skills (projectiles, blast, meteor, time freeze, blood ritual, heal, etc.) against spawned enemies including stronger variants and periodic **boss** spawns tied to level milestones (`EnemyGenerator`).
 
 Main scenes (under `Assets/_SCENES/`):
@@ -23,19 +19,27 @@ Main scenes (under `Assets/_SCENES/`):
 
 | Area | Role |
 |------|------|
-| **`PlayerCharacter`** | Level, XP curve, mana, health regen, leveling scales enemy stats via **`EnemyGenerator`**. |
-| **`EnemyGenerator`** | State machine (`Initialize` → `Setup` → `SpawnEnemy`): maintains a **target list**, spawns to match `level * 40` enemies, optional **greater** enemies from level **10+**, **boss** on levels divisible by **5** when greater spawns are enabled. |
-| **`SkillBasic` + skills** | Shared mana/cooldown helpers; skills find player by tag **`Player1`**, read **`GameOver`** flags to block input when dead or time over. |
-| **`UserInterface`** | Legacy **`OnGUI`** HUD: bars, skill icons, crosshair, blood splats. |
-| **`GameOver`** | Timer, kill UI (**Unity UI `Text`**), end screens, **`Application.Quit`** on Escape when dead. |
+| **`PlayerCharacter`** | Level, XP curve, mana, health regen, leveling scales enemy stats via **`EnemyGenerator`**. Warns if the **`Spawn`** tag is missing (generator dependency). |
+| **`EnemyGenerator`** | State machine (`Initialize` → `Setup` → `SpawnEnemy`): target living count and thresholds read **`GameBalanceHelper`** (from the active **`GameBalance`** asset or defaults). Boss instances from **`spawnEndBoss`** get **`EnemyCharacter.isBoss`** set at spawn. |
+| **`SkillBasic` + skills** | Shared mana/cooldown helpers; cache **`PlayerCharacter`** / **`GameOver`** where refactored; input keys go through **`GameInput`**; skills respect **`GameOver`** when dead or time over. |
+| **`UserInterface`** | Legacy **`OnGUI`** HUD (bars, skill icons, crosshair, blood splats) with cached player / **`GameOver`** / skill refs to avoid per-frame **`GetComponent`**. |
+| **`GameOver`** | Timer from balance, kill UI (**Unity UI `Text`**, null-safe), end screens. **Escape** uses **`GameInput`**. **WebGL**: no **`Application.Quit`**; copy prompts the player to close the tab. Standalone/editor use quit or exit play mode as appropriate. |
+| **`BackgroundMusic`** | **`AudioSource`** loop; optional **`alternateTracks`** + random pick (pool includes **`backGroundMusic`** when set), **`playbackVolume`**. Subclasses **`GameOver`** only to stop on game-over flags (legacy layout). |
 
 Enemy behaviour lives under `Assets/_SCRIPTS/Behaviour/` (`EnemyAI`, `GreaterEnemyAI`, `HomingMissileAI`, etc.).
+
+## Tuning & configuration
+
+| Asset / script | Purpose |
+|----------------|---------|
+| **`GameBalance`** (`Assets → Create → GeoWorld → Game Balance`) | Round length, `enemiesPerPlayerLevel`, greater/boss level rules, boss HP/XP multipliers and score bonus. Assign the asset on the **`GameOver`** component’s **`gameBalance`** field; if empty, **`GameBalanceHelper`** keeps the historical defaults. |
+| **`GameInput`** (`Assets/_SCRIPTS/Config/GameInput.cs`) | Single place for skill keys, pause/quit, and **`Fire1`** / mouse button indices (legacy Input Manager). |
 
 ## Repository layout
 
 ```
 Assets/
-  _SCRIPTS/          # Your game code (characters, skills, GUI, AI)
+  _SCRIPTS/          # Game code (Config/, characters, skills, GUI, AI, …)
   _SCENES/           # GameStart + GeoWorldMain (+ .meta)
   _ASSETS/, _PREFABS/, _TERRAIN/, etc.
   Standard Assets/   # Legacy Unity Standard Assets (effects, water, input, vehicles…)
@@ -54,7 +58,7 @@ These reflect how the game was built historically—not necessarily current Unit
    No formal service layer; systems are components on GameObjects, wired in the Inspector or found at runtime.
 
 2. **Discovery by tag and `GetComponent`**  
-   Widespread use of `GameObject.FindGameObjectWithTag("Player1")` and chained `GetComponent<T>()` from skills and UI.
+   Many systems still resolve the player by tag **`Player1`**; gameplay/UI paths that were hot refactored cache **`PlayerCharacter`** / **`GameOver`** instead of calling **`GetComponent`** every frame.
 
 3. **Dual UI stack**  
    - HUD and overlays: **`OnGUI`** (`UserInterface`, parts of `GameOver`).  
@@ -67,7 +71,7 @@ These reflect how the game was built historically—not necessarily current Unit
    `EnemyGenerator` uses an enum `State` and a `switch` in `Update` rather than coroutines or async.
 
 6. **Balancing and TODOs in-repo**  
-   See `Assets/TO-DO.txt` (German): boss tuning, damage floaters, lifesteal edge cases, meteor VFX vs level, etc.
+   Runtime tuning prefers **`GameBalance`** + **`GameBalanceHelper`** over scattered magic numbers. See `Assets/TO-DO.txt` (German): boss tuning, damage floaters, lifesteal edge cases, meteor VFX vs level, etc.
 
 ## Requirements
 
@@ -81,8 +85,9 @@ Do **not** set the build output to the project root. Use a subfolder, e.g. `Buil
 ## Contributing / picking it back up
 
 1. Open **`GeoWorldMain`** from `Assets/_SCENES` (or run from **`Start`** and press **G**).  
-2. Prefer fixing gameplay in **`Assets/_SCRIPTS`**; treat **`Standard Assets`** as legacy third-party code unless you plan a full replacement.  
-3. After big Unity upgrades, expect more obsolete API warnings in **Standard Assets**; the custom game scripts are the source of truth for design intent.
+2. Optional: create a **`Game Balance`** asset and assign it on **`GameOver`** so round length and spawn rules are editable without code changes (see **Tuning & configuration**).  
+3. Prefer fixing gameplay in **`Assets/_SCRIPTS`**; treat **`Standard Assets`** as legacy third-party code unless you plan a full replacement.  
+4. After big Unity upgrades, expect more obsolete API warnings in **Standard Assets**; the custom game scripts are the source of truth for design intent.
 
 ## License
 
@@ -91,5 +96,3 @@ Your original project code in this repository is licensed under the **MIT Licens
 **Third-party content** (for example **Unity Standard Assets** and Asset Store / pack assets under `Assets/`) may be governed by **other** licenses from Unity Technologies or those publishers. The MIT license applies to what you own and contribute here, not necessarily to every file in `Assets/`.
 
 ---
-
-*README generated from the current codebase structure and scripts; adjust wording if you rename scenes, tags, or core balance numbers.*

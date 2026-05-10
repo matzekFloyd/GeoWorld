@@ -3,11 +3,18 @@ using System.Collections;
 using UnityEngine.UI;
 
 using UnityEngine.SceneManagement;
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 
 
 public class GameOver : MonoBehaviour {
 
+    [Tooltip("Optional tuning asset. Create via Assets → Create → GeoWorld → Game Balance.")]
+    [SerializeField] private GameBalance gameBalance;
+
     private GameObject player;
+    private PlayerCharacter m_Player;
 
     public bool playerDied;
     public bool gameTimeIsOver;
@@ -28,39 +35,55 @@ public class GameOver : MonoBehaviour {
     public Text scoreBoardTextGreaterEnemies;
     public Text pressButtonToCloseGame;
 
+    private bool m_TimeFrozen;
+
 
     // Use this for initialization
     void Start () {
         playerDied = false;
         gameTimeIsOver = false;
+        GameBalanceHelper.Register(gameBalance);
+        timeLeft = GameBalanceHelper.RoundDurationSeconds;
         player = GameObject.FindGameObjectWithTag("Player1");
-        timeLeft = 900;
+        if (player != null)
+            m_Player = player.GetComponent<PlayerCharacter>();
     }
 
     // Update is called once per frame
     void Update () {
 
+        if (player == null || m_Player == null)
+            return;
+
         if (timeLeft <= 0) {
             gameTimeIsOver = true;
         }
 
-        if (player.GetComponent<PlayerCharacter>().curHealth <= 0)
+        if (m_Player.curHealth <= 0)
         {
             playerDied = true;
         }
 
         if (playerDied || gameTimeIsOver)
         {
-            textTimer.enabled = false;
-            textEnemyCounter.enabled = false;
-            textGreaterEnemyCounter.enabled = false;
+            if (!m_TimeFrozen)
+            {
+                m_TimeFrozen = true;
+                Time.timeScale = 0f;
+            }
+            if (textTimer != null) textTimer.enabled = false;
+            if (textEnemyCounter != null) textEnemyCounter.enabled = false;
+            if (textGreaterEnemyCounter != null) textGreaterEnemyCounter.enabled = false;
 
         } else
         {
             timeLeft -= Time.deltaTime;
-            textTimer.text = "Time left: " + Mathf.Round(timeLeft);
-            textEnemyCounter.text = "Enemies killed: " + enemyKillCounter;
-            textGreaterEnemyCounter.text = "Greater Enemies killed: " + greaterEnemyKillCounter;
+            if (textTimer != null)
+                textTimer.text = "Time left: " + Mathf.Round(timeLeft);
+            if (textEnemyCounter != null)
+                textEnemyCounter.text = "Enemies killed: " + enemyKillCounter;
+            if (textGreaterEnemyCounter != null)
+                textGreaterEnemyCounter.text = "Greater Enemies killed: " + greaterEnemyKillCounter;
         }
 
     }
@@ -69,28 +92,52 @@ public class GameOver : MonoBehaviour {
     {
         if (playerDied)
         {
-            Time.timeScale = 0.0f;
+            if (scoreBoardTextEnemies != null)
+                scoreBoardTextEnemies.text = "Enemies killed: " + enemyKillCounter;
+            if (scoreBoardTextGreaterEnemies != null)
+                scoreBoardTextGreaterEnemies.text = "Greater Enemies killed: " + greaterEnemyKillCounter;
+            if (gameOverText != null)
+                gameOverText.text = "Game Over! You died!";
 
-            scoreBoardTextEnemies.text = "Enemies killed: " + enemyKillCounter;
-            scoreBoardTextGreaterEnemies.text = "Greater Enemies killed: " + greaterEnemyKillCounter;
-            gameOverText.text = "Game Over! You died!";
-
-            pressButtonToCloseGame.text = "Press 'esc' to close the Game";
-            if (Input.GetKeyUp(KeyCode.Escape)) Application.Quit();
+            SetQuitInstructions();
+            HandleQuitRequest();
 
          } else if (gameTimeIsOver)
         {
-            Time.timeScale = 0.0f;
+            if (scoreBoardTextEnemies != null)
+                scoreBoardTextEnemies.text = "Enemies killed: " + enemyKillCounter;
+            if (scoreBoardTextGreaterEnemies != null)
+                scoreBoardTextGreaterEnemies.text = "Greater Enemies killed: " + greaterEnemyKillCounter;
+            if (gameOverText != null)
+                gameOverText.text = "Congratulations! You saved GeoWorld!";
 
-            scoreBoardTextEnemies.text = "Enemies killed: " + enemyKillCounter;
-            scoreBoardTextGreaterEnemies.text = "Greater Enemies killed: " + greaterEnemyKillCounter;
-            gameOverText.text = "Congratulations! You saved GeoWorld!";
-
-            pressButtonToCloseGame.text = "Press 'esc' to close the Game";
-            if (Input.GetKeyUp(KeyCode.Escape)) Application.Quit();
+            SetQuitInstructions();
+            HandleQuitRequest();
 
         }
 
+    }
+
+    void SetQuitInstructions()
+    {
+        if (pressButtonToCloseGame == null) return;
+#if UNITY_WEBGL && !UNITY_EDITOR
+        pressButtonToCloseGame.text = "Thanks for playing! You can close this browser tab.";
+#else
+        pressButtonToCloseGame.text = "Press 'esc' to close the Game";
+#endif
+    }
+
+    void HandleQuitRequest()
+    {
+        if (!GameInput.PauseOrQuitUp) return;
+#if UNITY_EDITOR
+        EditorApplication.ExitPlaymode();
+#elif UNITY_WEBGL
+        // Browsers ignore Application.Quit; UI text explains closing the tab.
+#else
+        Application.Quit();
+#endif
     }
 
 

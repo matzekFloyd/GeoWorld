@@ -307,10 +307,14 @@ public class EnemyAI : MonoBehaviour {
         enemyGenerator.GetComponent<EnemyGenerator>().targets.Remove(this.transform);
         target.GetComponent<FreezeTime>().enemiesToFreeze.Remove(this.gameObject);
 
-        float gainedExp = this.gameObject.GetComponent<EnemyCharacter>().getExpOnKill();
+        EnemyCharacter ec = this.gameObject.GetComponent<EnemyCharacter>();
+        float gainedExp = ec.getExpOnKill();
         target.GetComponent<PlayerCharacter>().AddExp(gainedExp);
 
-        ++target.GetComponent<GameOver>().enemyKillCounter;
+        GameOver go = target.GetComponent<GameOver>();
+        ++go.enemyKillCounter;
+        if (ec != null && ec.isBoss)
+            go.greaterEnemyKillCounter += 1 + GameBalanceHelper.BossGreaterKillCounterBonus;
 
         Destroy(this.gameObject, 0);
 

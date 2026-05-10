@@ -20,11 +20,12 @@ public class GeoShot : SkillBasic
     // Update is called once per frame
     void Update()
     {
-        manacost = player.GetComponent<PlayerCharacter>().getCurLevel();
-        geoShotDmg = player.GetComponent<PlayerCharacter>().getCurLevel() * 20f;
+        if (m_Player == null) return;
+        manacost = m_Player.getCurLevel();
+        geoShotDmg = m_Player.getCurLevel() * 20f;
         updateCoolDown();
         
-        if (Input.GetButtonDown("Fire1") && requiredMana() && this.gameObject.GetComponent<GameOver>().playerDied == false && this.gameObject.GetComponent<GameOver>().gameTimeIsOver == false)
+        if (GameInput.FirePrimaryDown && requiredMana() && CanUseSkills())
         {
             if (curCooldown == 0)
             {
@@ -43,7 +44,7 @@ public class GeoShot : SkillBasic
 
     public void shoot()
     {
-        player.GetComponent<PlayerCharacter>().curMana -= manacost;
+        m_Player.curMana -= manacost;
 
         GameObject shot = (GameObject)Instantiate(geoShotProjectile, camPos.position + camPos.forward * 5, camPos.rotation);
         shot.GetComponent<Rigidbody>().AddForce(camPos.forward * 10, ForceMode.Impulse);
@@ -52,7 +53,7 @@ public class GeoShot : SkillBasic
     public void geoManiaShoot()
     {
         int randomValue = Random.Range(1, 5);
-        player.GetComponent<PlayerCharacter>().curMana -= manacost;
+        m_Player.curMana -= manacost;
 
         for(int i = 0; i <= randomValue; i++)
         {

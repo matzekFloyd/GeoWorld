@@ -21,6 +21,8 @@ public class EnemyGenerator : MonoBehaviour {
 
     public GameObject endBossPrefab;
     private GameObject player;
+    private PlayerCharacter m_Player;
+    private FreezeTime m_FreezeTime;
 
     public List<Transform> targets;
 
@@ -30,6 +32,11 @@ public class EnemyGenerator : MonoBehaviour {
 	void Start () {
         targets = new List<Transform>();
         player = GameObject.FindGameObjectWithTag("Player1");
+        if (player != null)
+        {
+            m_Player = player.GetComponent<PlayerCharacter>();
+            m_FreezeTime = player.GetComponent<FreezeTime>();
+        }
         AddAllEnemies();
         state = EnemyGenerator.State.Initialize;
     }
@@ -71,15 +78,17 @@ public class EnemyGenerator : MonoBehaviour {
 
     private void SpawnEnemy()
     {
-        bool greaterEnemySpawnEnabled = player.GetComponent<PlayerCharacter>().getCurLevel() >= 10;
+        if (m_Player == null) return;
+
+        bool greaterEnemySpawnEnabled = m_Player.getCurLevel() >= GameBalanceHelper.GreaterEnemiesMinPlayerLevel;
 
         if (greaterEnemySpawnEnabled)
         {
 
-            if ((player.GetComponent<PlayerCharacter>().getCurLevel() % 5 == 0)) spawnEndBoss();            
+            if (m_Player.getCurLevel() % GameBalanceHelper.BossSpawnLevelMultiple == 0) spawnEndBoss();            
         }
 
-        int desiredEnemyCount = player.GetComponent<PlayerCharacter>().getCurLevel() * 40;
+        int desiredEnemyCount = m_Player.getCurLevel() * GameBalanceHelper.EnemiesPerPlayerLevel;
         int currentEnemyCount = targets.Count;
         int enemiesToSpawn = desiredEnemyCount - currentEnemyCount;
 
@@ -97,7 +106,8 @@ public class EnemyGenerator : MonoBehaviour {
                 enemy.transform.parent = gos[selectedSpawnPoint].transform;
 
                 AddTarget(enemy.transform);
-                GameObject.FindGameObjectWithTag("Player1").GetComponent<FreezeTime>().AddTarget(enemy);
+                if (m_FreezeTime != null)
+                    m_FreezeTime.AddTarget(enemy);
             }
         
         state = EnemyGenerator.State.Idle;
@@ -159,6 +169,9 @@ public class EnemyGenerator : MonoBehaviour {
 
         GameObject endBoss = Instantiate(endBossPrefab, greaterEnemySpawnPoints[randomizeSpawnpointValue].transform.position, Quaternion.identity) as GameObject;
         endBoss.transform.parent = greaterEnemySpawnPoints[randomizeSpawnpointValue].transform;
+        EnemyCharacter bossChar = endBoss.GetComponent<EnemyCharacter>();
+        if (bossChar != null)
+            bossChar.isBoss = true;
         AddTarget(endBoss.transform);
 
     }

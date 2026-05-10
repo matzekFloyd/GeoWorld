@@ -7,6 +7,9 @@ public class EnemyCharacter : BaseCharacter {
     public float expOnKill;
     public Color originalColor;
     public bool iAmGreaterEnemy;
+
+    [Tooltip("Enable on boss prefabs for extra health/EXP and scoreboard bonus on death.")]
+    public bool isBoss;
     
     // Use this for initialization
     void Start () {
@@ -39,15 +42,21 @@ public class EnemyCharacter : BaseCharacter {
             expOnKill = curPlayerLevel * 15;
         }
 
+        if (isBoss)
+        {
+            maxHealth *= GameBalanceHelper.BossHealthMultiplier;
+            curHealth = maxHealth;
+            expOnKill *= GameBalanceHelper.BossExpMultiplier;
+        }
+
         //Bewegungsgeschwindigkeit der Gegner
-        this.gameObject.GetComponent<EnemyAI>().moveSpeed = Random.Range(7.5f, 20f);
-
-        //Geschwindigkeit mit der sich die Gegner (in die Richtung des Spielers) drehen
-        this.gameObject.GetComponent<EnemyAI>().rotationSpeed = Random.Range(5f, 15f);
-
-        //DAMAGE WERT DER MONSTER ZWISCHEN EINEM ZWANZIGSTEL UND EINEM ZEHNTEL DER MAXIMALEN LEBENSPUNKTE DES SPIELERS
-        //this.gameObject.GetComponent<EnemyAI>().damage = Random.Range(player.GetComponent<PlayerCharacter>().getMaxHealth() / 20, player.GetComponent<PlayerCharacter>().getMaxHealth() / 10);
-        this.gameObject.GetComponent<EnemyAI>().damage = Random.Range(player.GetComponent<PlayerCharacter>().getCurLevel() * 7.5f, player.GetComponent<PlayerCharacter>().getCurLevel() * 12.5f);
+        EnemyAI enemyAI = this.gameObject.GetComponent<EnemyAI>();
+        if (enemyAI != null)
+        {
+            enemyAI.moveSpeed = Random.Range(7.5f, 20f);
+            enemyAI.rotationSpeed = Random.Range(5f, 15f);
+            enemyAI.damage = Random.Range(player.GetComponent<PlayerCharacter>().getCurLevel() * 7.5f, player.GetComponent<PlayerCharacter>().getCurLevel() * 12.5f);
+        }
 
     }
 

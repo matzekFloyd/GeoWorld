@@ -16,7 +16,6 @@ public class HealSelf : SkillBasic {
 	void Start () {
         curCooldown = 0;
         healTimer = 1;
-        player = GameObject.FindGameObjectWithTag("Player1");
         a = GetComponent<AudioSource>();
         showHealTexture = false;
     }
@@ -24,15 +23,16 @@ public class HealSelf : SkillBasic {
     // Update is called once per frame
     void Update () {
 
+        if (m_Player == null) return;
         maxCooldown = 4;
-        healTimerCooldown = player.GetComponent<PlayerCharacter>().getCurLevel() / 2f;
-        manacost = player.GetComponent<PlayerCharacter>().getCurLevel() * 25f;
-        healingAmount = player.GetComponent<PlayerCharacter>().getCurLevel() * 150f;
+        healTimerCooldown = m_Player.getCurLevel() / 2f;
+        manacost = m_Player.getCurLevel() * 25f;
+        healingAmount = m_Player.getCurLevel() * 150f;
         updateCoolDown();
 
-        if (player.GetComponent<PlayerCharacter>().skillAvailable(2))
+        if (m_Player.skillAvailable(2))
         {
-            if (Input.GetKeyUp(KeyCode.Q) && requiredMana() && this.gameObject.GetComponent<GameOver>().playerDied == false && this.gameObject.GetComponent<GameOver>().gameTimeIsOver == false)
+            if (GameInput.SkillHealUp && requiredMana() && CanUseSkills())
             {
                 if (curCooldown == 0)
                 {
@@ -51,16 +51,15 @@ public class HealSelf : SkillBasic {
 
     public void heal()
     {
-            player.GetComponent<PlayerCharacter>().curMana -= manacost;
+            m_Player.curMana -= manacost;
 
             a.PlayOneShot(healSound, 1F);
-            player.GetComponent<PlayerCharacter>().changeCurrentHealth(healingAmount);
+            m_Player.changeCurrentHealth(healingAmount);
      }
 
     public float getCurrentMaxHealth()
     {
-        float mh = player.GetComponent<PlayerCharacter>().getMaxHealth();
-        return mh;
+        return m_Player.getMaxHealth();
     }
 
     public float getHealingAmount()
@@ -70,7 +69,7 @@ public class HealSelf : SkillBasic {
 
     void OnGUI()
     {
-        if (showHealTexture && this.gameObject.GetComponent<GameOver>().playerDied == false && this.gameObject.GetComponent<GameOver>().gameTimeIsOver == false)
+        if (showHealTexture && m_GameOver != null && !m_GameOver.playerDied && !m_GameOver.gameTimeIsOver)
         {
             GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), healTexture);
         }

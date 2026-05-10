@@ -12,6 +12,7 @@ public class PlayerCharacter : BaseCharacter {
     public float expNeededForLevelUp;
 
     private GameObject enemyGenerator;
+    private GameOver m_GameOver;
 
 
 
@@ -20,6 +21,9 @@ public class PlayerCharacter : BaseCharacter {
     void Start () {
 
         enemyGenerator = GameObject.FindGameObjectWithTag("Spawn");
+        if (enemyGenerator == null)
+            Debug.LogWarning("GeoWorld: No GameObject with tag 'Spawn' found. Enemy wave scaling (LevelUp → EnemyGenerator) will not work.");
+        m_GameOver = GetComponent<GameOver>();
         setInitialPlayerStatistics();
     }
 
@@ -49,7 +53,7 @@ public class PlayerCharacter : BaseCharacter {
         }
 
         //FÜR TESTZWECKE
-        if (Input.GetKeyUp(KeyCode.T) && this.gameObject.GetComponent<GameOver>().playerDied == false && this.gameObject.GetComponent<GameOver>().gameTimeIsOver == false)
+        if (GameInput.DebugInstantLevelUpUp && m_GameOver != null && !m_GameOver.playerDied && !m_GameOver.gameTimeIsOver)
         {
                 LevelUp();
         }
@@ -84,19 +88,19 @@ public class PlayerCharacter : BaseCharacter {
 
             curExp = 0;
 
-            for (int i = 0; i <= maxLevel; i++)
-            {
-                if (curLevel == i) expNeededForLevelUp = i*i*75;
-            }
+            expNeededForLevelUp = curLevel * curLevel * 75;
                                 
         }
 
         //Wenn der Spieler ein Level aufsteigt -> passe die Werte aller Gegner an
-        for (int i = 0; i < enemyGenerator.GetComponent<EnemyGenerator>().targets.Count; i++)
+        EnemyGenerator gen = enemyGenerator.GetComponent<EnemyGenerator>();
+        if (gen == null) return;
+
+        for (int i = 0; i < gen.targets.Count; i++)
         {
-            enemyGenerator.GetComponent<EnemyGenerator>().targets[i].GetComponent<EnemyCharacter>().setEnemyStatistics(this.curLevel, this.expNeededForLevelUp);
+            gen.targets[i].GetComponent<EnemyCharacter>().setEnemyStatistics(this.curLevel, this.expNeededForLevelUp);
         }
-        enemyGenerator.GetComponent<EnemyGenerator>().state = EnemyGenerator.State.SpawnEnemy;
+        gen.state = EnemyGenerator.State.SpawnEnemy;
 
      }
 
