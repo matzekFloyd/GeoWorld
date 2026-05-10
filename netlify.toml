@@ -1,5 +1,5 @@
 # Applied when deploying from the repo root via Netlify CLI.
-# Publish root is Build/WebGL (set by CI); these rules apply relative to that folder.
+# Publish root is Build/WebGL/GeoWorld (CI); paths below are relative to that folder.
 
 [[headers]]
   for = "/*.wasm"
@@ -32,6 +32,35 @@
 
 [[headers]]
   for = "/*.wasm.gz"
+  [headers.values]
+    Content-Encoding = "gzip"
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Unity emits *.framework.js.gz / *.loader.js.gz when compression is on; the CDN
+# must advertise gzip or the loader fails to parse (same idea as .data.gz).
+[[headers]]
+  for = "/*.js.gz"
+  [headers.values]
+    Content-Type = "application/javascript"
+    Content-Encoding = "gzip"
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/*.js.br"
+  [headers.values]
+    Content-Type = "application/javascript"
+    Content-Encoding = "br"
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/Build/*.js.gz"
+  [headers.values]
+    Content-Type = "application/javascript"
+    Content-Encoding = "gzip"
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/*.json.gz"
   [headers.values]
     Content-Encoding = "gzip"
     Cache-Control = "public, max-age=31536000, immutable"
