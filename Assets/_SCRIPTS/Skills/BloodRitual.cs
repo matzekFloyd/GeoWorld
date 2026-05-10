@@ -62,13 +62,13 @@ public class BloodRitual : SkillBasic{
         }
      }
 
-    void OnGUI()
+    void LateUpdate()
     {
-        if (showBloodStain && m_GameOver != null && !m_GameOver.playerDied && !m_GameOver.gameTimeIsOver)
-        {
-            GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), bloodRitualTexture1);
-            GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), bloodRitualTexture2);
-        }
+        var hud = GameplayHudView.Instance;
+        if (hud == null)
+            return;
+        bool on = showBloodStain && m_GameOver != null && !m_GameOver.playerDied && !m_GameOver.gameTimeIsOver;
+        hud.ConfigureBloodRitualFx(on, bloodRitualTexture1, bloodRitualTexture2);
     }
 
     protected void calculateBloodTextureCooldown()

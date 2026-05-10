@@ -78,12 +78,13 @@ public class FreezeTime : SkillBasic
         enemiesToFreeze.Add(targetsToFreeze);
     }
 
-    void OnGUI()
+    void LateUpdate()
     {
-        if (showFreezeTexture && m_GameOver != null && !m_GameOver.playerDied && !m_GameOver.gameTimeIsOver)
-        {
-            GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), freezeTexture);
-        }
+        var hud = GameplayHudView.Instance;
+        if (hud == null)
+            return;
+        bool on = showFreezeTexture && m_GameOver != null && !m_GameOver.playerDied && !m_GameOver.gameTimeIsOver;
+        hud.ConfigureFreezeFx(on, freezeTexture);
     }
 
     protected void calculateFreezeTextureCooldown()

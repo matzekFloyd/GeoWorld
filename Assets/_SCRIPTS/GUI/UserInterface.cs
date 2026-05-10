@@ -1,10 +1,16 @@
 ﻿using UnityEngine;
-using System.Collections;
 
-public class UserInterface : MonoBehaviour {
+/// <summary>
+/// Drives the uGUI <see cref="GameplayHudView"/> with player/skill data. Layout is created under a child
+/// <c>GameplayHUD</c> Canvas at runtime; assign a <see cref="GameplayHudView"/> on this object only if you
+/// customize the hierarchy in the Editor.
+/// </summary>
+public class UserInterface : MonoBehaviour
+{
+    const int SkillCount = 8;
+    static readonly int[] SkillMinLevels = { 1, 1, 1, 2, 4, 6, 8, 10 };
 
     private GameObject player;
-    private GameObject enemy;
 
     private PlayerCharacter m_Player;
     private GameOver m_GameOver;
@@ -18,24 +24,24 @@ public class UserInterface : MonoBehaviour {
 
     private float curPlayerHealth;
     private float maxPlayerHealth;
-    private float playerHealthBarLength;
-
     private float curPlayerMana;
     private float maxPlayerMana;
-    private float playerManaBarLength;
-
     private float curPlayerLevel;
     private float maxPlayerLevel;
-
     private float playerExp;
     private float playerExpNeededForLevelUp;
-    private float playerExpBarLength;
-    private float maxPlayerExpBarLength;
 
-    private int maxNumberOfSkills;
+    GameplayHudView _hud;
 
-    private float skillIconWidth;
-    private float maxBarLength;
+    readonly string[] _keyLabels = new string[SkillCount];
+    readonly Sprite[] _skillIcons = new Sprite[SkillCount];
+    readonly string[] _skillMana = new string[SkillCount];
+    readonly string[] _skillDmg = new string[SkillCount];
+    readonly string[] _skillHeal = new string[SkillCount];
+    readonly string[] _skillCdMax = new string[SkillCount];
+    readonly string[] _skillCdCur = new string[SkillCount];
+
+    Sprite _frameSprite;
 
     public Texture2D crosshairImage;
     public Texture2D healthBarTexture;
@@ -56,9 +62,15 @@ public class UserInterface : MonoBehaviour {
     public Texture2D bloodTexture2;
     public Texture2D bloodTexture3;
 
-    // Use this for initialization
-    void Start () {
+    void Awake()
+    {
+        _hud = GetComponent<GameplayHudView>();
+        if (_hud == null)
+            _hud = gameObject.AddComponent<GameplayHudView>();
+    }
 
+    void Start()
+    {
         player = GameObject.FindGameObjectWithTag("Player1");
         if (player != null)
         {
@@ -72,15 +84,43 @@ public class UserInterface : MonoBehaviour {
             m_FreezeTime = player.GetComponent<FreezeTime>();
         }
         m_GameOver = GetComponent<GameOver>();
-        maxBarLength = Screen.width / 4;
-        maxNumberOfSkills = 8;
-        skillIconWidth = maxBarLength / maxNumberOfSkills;
+
+        _hud.EnsureBuilt(this);
+        if (crosshairImage != null)
+            _hud.ApplyCrosshair(GameplayHudView.SpriteFromTexture(crosshairImage));
+        _hud.ApplyBarSprites(
+            GameplayHudView.SpriteFromTexture(healthBarTexture),
+            GameplayHudView.SpriteFromTexture(manaBarTexture),
+            GameplayHudView.SpriteFromTexture(expTexture));
+        _frameSprite = GameplayHudView.SpriteFromTexture(frameTexture);
+
+        _keyLabels[0] = "M1";
+        _keyLabels[1] = "M2";
+        _keyLabels[2] = "";
+        _keyLabels[3] = "Q";
+        _keyLabels[4] = "E";
+        _keyLabels[5] = "R";
+        _keyLabels[6] = "F";
+        _keyLabels[7] = "";
+        CacheStaticSkillSprites();
     }
 
-    // Update is called once per frame
-    void Update () {
+    void CacheStaticSkillSprites()
+    {
+        _skillIcons[0] = GameplayHudView.SpriteFromTexture(singleShotTexture);
+        _skillIcons[1] = GameplayHudView.SpriteFromTexture(sprayShotTexture);
+        _skillIcons[2] = GameplayHudView.SpriteFromTexture(geoPhysicsTexture);
+        _skillIcons[3] = GameplayHudView.SpriteFromTexture(healTexture);
+        _skillIcons[4] = GameplayHudView.SpriteFromTexture(fireBallTexture);
+        _skillIcons[5] = GameplayHudView.SpriteFromTexture(bloodRitualTexture);
+        _skillIcons[6] = GameplayHudView.SpriteFromTexture(freezeTimeTexture);
+        _skillIcons[7] = GameplayHudView.SpriteFromTexture(geoManiaTexture);
+    }
 
-        if (m_Player == null) return;
+    void Update()
+    {
+        if (m_Player == null || _hud == null)
+            return;
 
         curPlayerLevel = m_Player.getCurLevel();
         maxPlayerLevel = m_Player.getMaxLevel();
@@ -91,183 +131,117 @@ public class UserInterface : MonoBehaviour {
         playerExp = m_Player.getCurExp();
         playerExpNeededForLevelUp = m_Player.getExpNeededForLevelUp();
 
-        adjustBarLength();
+        BuildSkillStrings();
+
+        bool show = m_GameOver != null && !m_GameOver.playerDied && !m_GameOver.gameTimeIsOver;
+        _hud.RefreshGameplay(
+            show,
+            Mathf.RoundToInt(curPlayerLevel),
+            Mathf.RoundToInt(maxPlayerLevel),
+            curPlayerHealth,
+            maxPlayerHealth,
+            curPlayerMana,
+            maxPlayerMana,
+            playerExp,
+            playerExpNeededForLevelUp,
+            bloodTexture1,
+            bloodTexture2,
+            bloodTexture3,
+            _keyLabels,
+            _skillIcons,
+            _frameSprite,
+            _skillMana,
+            _skillDmg,
+            _skillHeal,
+            _skillCdMax,
+            _skillCdCur);
     }
 
-    void OnGUI()
+    void BuildSkillStrings()
     {
-        if (m_GameOver != null && !m_GameOver.playerDied && !m_GameOver.gameTimeIsOver && m_Player != null)
+        int lv = Mathf.RoundToInt(curPlayerLevel);
+        for (int i = 0; i < SkillCount; i++)
         {
-            GUI.color = Color.white;
-
-            //CLASS/NAME GUI
-            GUI.Box(new Rect(10, 10, 100, 20), "GeoMancer ");
-            GUI.Box(new Rect(110, 10, Screen.width / 4, 20), "Level " + curPlayerLevel);
-
-            //HEALTH GUI
-            GUI.Box(new Rect(10, 30, 100, 20), "Health: ");
-            GUI.DrawTexture(new Rect(110, 30, playerHealthBarLength, 20), healthBarTexture);
-            GUI.Box(new Rect(110, 30, maxBarLength, 20), (int)curPlayerHealth + "/" + (int)maxPlayerHealth);
-
-            //MANA GUI
-            GUI.Box(new Rect(10, 50, 100, 20), "Mana: ");
-            GUI.DrawTexture(new Rect(110, 50, playerManaBarLength, 20), manaBarTexture);
-            GUI.Box(new Rect(110, 50, maxBarLength, 20), (int)curPlayerMana + "/" + (int)maxPlayerMana);
-
-            //EXP GUI
-            GUI.Box(new Rect(10, 70, 100, 20), "Experience: ");
-            if (curPlayerLevel < maxPlayerLevel)
+            if (lv < SkillMinLevels[i])
             {
-                GUI.DrawTexture(new Rect(110, 70, playerExpBarLength, 20), expTexture);
-                GUI.Box(new Rect(110, 70, maxBarLength, 20), (int)playerExp + "/" + (int)playerExpNeededForLevelUp);
-            }
-            else
-            {
-                GUI.DrawTexture(new Rect(110, 70, maxBarLength, 20), expTexture);
-                GUI.Box(new Rect(110, 70, maxBarLength, 20), "MAX LEVEL REACHED");
+                _skillMana[i] = "";
+                _skillDmg[i] = "";
+                _skillHeal[i] = "";
+                _skillCdMax[i] = "";
+                _skillCdCur[i] = "";
+                continue;
             }
 
-            //SKILLS GUI
+            _skillMana[i] = "";
+            _skillDmg[i] = "";
+            _skillHeal[i] = "";
+            _skillCdMax[i] = "";
+            _skillCdCur[i] = "";
 
-            if (curPlayerLevel >= 1)
+            if (i == 0 && m_GeoShot != null)
             {
-                GUI.Box(new Rect(10, 90, 100, 70), "Skills: ");
-                GUI.Box(new Rect(10, 160, 100, 20), "Manacost: ");
-                GUI.Box(new Rect(10, 180, 100, 20), "Damage: ");
-                GUI.Box(new Rect(10, 200, 100, 20), "Heal: ");
-                GUI.Box(new Rect(10, 220, 100, 40), "Cooldown: ");
-
-                GUI.Box(new Rect(110, 90, skillIconWidth, 70), backgroundTexture);
-                GUI.Box(new Rect(110, 90, skillIconWidth, 70), "M1");
-                GUI.DrawTexture(new Rect(110, 110, skillIconWidth, 50), singleShotTexture);
-                GUI.DrawTexture(new Rect(110, 110, skillIconWidth, 50), frameTexture);
-                GUI.Box(new Rect(110, 160, skillIconWidth, 20), "" + m_GeoShot.manacost.ToString("F0"));
-                GUI.Box(new Rect(110, 180, skillIconWidth, 20), "" + m_GeoShot.getGeoShotDmg());
-                GUI.Box(new Rect(110, 200, skillIconWidth, 20), "");
-                GUI.Box(new Rect(110, 220, skillIconWidth, 20), "" + m_GeoShot.maxCooldown.ToString("F2"));
-                GUI.Box(new Rect(110, 240, skillIconWidth, 20), "" + m_GeoShot.curCooldown.ToString("F2"));
-
-                GUI.Box(new Rect(110 + skillIconWidth, 90, skillIconWidth, 70), backgroundTexture);
-                GUI.Box(new Rect(110 + skillIconWidth, 90, skillIconWidth, 70), "M2");
-                GUI.DrawTexture(new Rect(110 + skillIconWidth, 110, skillIconWidth, 50), sprayShotTexture);
-                GUI.DrawTexture(new Rect(110 + skillIconWidth, 110, skillIconWidth, 50), frameTexture);
-                GUI.Box(new Rect(110 + skillIconWidth, 160, skillIconWidth, 20), "" + m_GeoBlast.manacost);
-                GUI.Box(new Rect(110 + skillIconWidth, 180, skillIconWidth, 20), "" + m_GeoBlast.getGeoBlastDmg());
-                GUI.Box(new Rect(110 + skillIconWidth, 200, skillIconWidth, 20), "");
-                GUI.Box(new Rect(110 + skillIconWidth, 220, skillIconWidth, 20), "" + m_GeoBlast.maxCooldown.ToString("F2"));
-                GUI.Box(new Rect(110 + skillIconWidth, 240, skillIconWidth, 20), "" + m_GeoBlast.curCooldown.ToString("F2"));
-
-                GUI.Box(new Rect(110 + 2 * skillIconWidth, 90, skillIconWidth, 70), backgroundTexture);
-                GUI.Box(new Rect(110 + 2 * skillIconWidth, 90, skillIconWidth, 70), "");
-                GUI.DrawTexture(new Rect(110 + 2 * skillIconWidth, 110, skillIconWidth, 50), geoPhysicsTexture);
-                GUI.DrawTexture(new Rect(110 + 2 * skillIconWidth, 110, skillIconWidth, 50), frameTexture);
-                GUI.Box(new Rect(110 + 2 * skillIconWidth, 160, skillIconWidth, 20), "");
-                GUI.Box(new Rect(110 + 2 * skillIconWidth, 180, skillIconWidth, 20), "");
-                GUI.Box(new Rect(110 + 2 * skillIconWidth, 200, skillIconWidth, 20), "" + m_GeoPhysics.getGeoPhysicsHealthReg().ToString("F1")+"/s");
-                GUI.Box(new Rect(110 + 2 * skillIconWidth, 220, skillIconWidth, 20), "");
-                GUI.Box(new Rect(110 + 2 * skillIconWidth, 240, skillIconWidth, 20), "");
+                _skillMana[i] = m_GeoShot.manacost.ToString("F0");
+                _skillDmg[i] = m_GeoShot.getGeoShotDmg().ToString();
+                _skillHeal[i] = "";
+                _skillCdMax[i] = m_GeoShot.maxCooldown.ToString("F2");
+                _skillCdCur[i] = m_GeoShot.curCooldown.ToString("F2");
             }
-
-            if (curPlayerLevel >= 2)
+            else if (i == 1 && m_GeoBlast != null)
             {
-                GUI.Box(new Rect(110 + 3 * skillIconWidth, 90, skillIconWidth, 70), backgroundTexture);
-                GUI.Box(new Rect(110 + 3 * skillIconWidth, 90, skillIconWidth, 70), "Q");
-                GUI.DrawTexture(new Rect(110 + 3 * skillIconWidth, 110, skillIconWidth, 50), healTexture);
-                GUI.DrawTexture(new Rect(110 + 3 * skillIconWidth, 110, skillIconWidth, 50), frameTexture);
-
-                GUI.Box(new Rect(110 + 3 * skillIconWidth, 160, skillIconWidth, 20), "" + m_HealSelf.manacost.ToString("F0"));
-                GUI.Box(new Rect(110 + 3 * skillIconWidth, 180, skillIconWidth, 20), "");
-                GUI.Box(new Rect(110 + 3 * skillIconWidth, 200, skillIconWidth, 20), "" + m_HealSelf.getHealingAmount().ToString("F0"));
-                GUI.Box(new Rect(110 + 3 * skillIconWidth, 220, skillIconWidth, 20), "" + m_HealSelf.maxCooldown.ToString("F0"));
-                GUI.Box(new Rect(110 + 3 * skillIconWidth, 240, skillIconWidth, 20), "" + m_HealSelf.curCooldown.ToString("F1"));
-
-
+                _skillMana[i] = m_GeoBlast.manacost.ToString("F0");
+                _skillDmg[i] = m_GeoBlast.getGeoBlastDmg().ToString();
+                _skillHeal[i] = "";
+                _skillCdMax[i] = m_GeoBlast.maxCooldown.ToString("F2");
+                _skillCdCur[i] = m_GeoBlast.curCooldown.ToString("F2");
             }
-
-            if (curPlayerLevel >= 4)
+            else if (i == 2 && m_GeoPhysics != null)
             {
-                GUI.Box(new Rect(110 + 4 * skillIconWidth, 90, skillIconWidth, 70), backgroundTexture);
-                GUI.Box(new Rect(110 + 4 * skillIconWidth, 90, skillIconWidth, 70), "E");
-                GUI.DrawTexture(new Rect(110 + 4 * skillIconWidth, 110, skillIconWidth, 50), fireBallTexture);
-                GUI.DrawTexture(new Rect(110 + 4 * skillIconWidth, 110, skillIconWidth, 50), frameTexture);
-
-                GUI.Box(new Rect(110 + 4 * skillIconWidth, 160, skillIconWidth, 20), "" + m_Meteor.manacost.ToString("F0"));
-                GUI.Box(new Rect(110 + 4 * skillIconWidth, 180, skillIconWidth, 20), "" + m_Meteor.getMeteorDamage().ToString("F0"));
-                GUI.Box(new Rect(110 + 4 * skillIconWidth, 200, skillIconWidth, 20), "");
-                GUI.Box(new Rect(110 + 4 * skillIconWidth, 220, skillIconWidth, 20), "" + m_Meteor.maxCooldown.ToString("F1"));
-                GUI.Box(new Rect(110 + 4 * skillIconWidth, 240, skillIconWidth, 20), "" + m_Meteor.curCooldown.ToString("F1"));
-
+                _skillMana[i] = "";
+                _skillDmg[i] = "";
+                _skillHeal[i] = m_GeoPhysics.getGeoPhysicsHealthReg().ToString("F1") + "/s";
+                _skillCdMax[i] = "";
+                _skillCdCur[i] = "";
             }
-
-            if (curPlayerLevel >= 6)
+            else if (i == 3 && m_HealSelf != null)
             {
-                GUI.Box(new Rect(110 + 5 * skillIconWidth, 90, skillIconWidth, 70), backgroundTexture);
-                GUI.Box(new Rect(110 + 5 * skillIconWidth, 90, skillIconWidth, 70), "R");
-                GUI.DrawTexture(new Rect(110 + 5 * skillIconWidth, 110, skillIconWidth, 50), bloodRitualTexture);
-                GUI.DrawTexture(new Rect(110 + 5 * skillIconWidth, 110, skillIconWidth, 50), frameTexture);
-
-                GUI.Box(new Rect(110 + 5 * skillIconWidth, 160, skillIconWidth, 20), "" + m_BloodRitual.manacost.ToString("F0"));
-                GUI.Box(new Rect(110 + 5 * skillIconWidth, 180, skillIconWidth, 20), "");
-                GUI.Box(new Rect(110 + 5 * skillIconWidth, 200, skillIconWidth, 20), "");
-                GUI.Box(new Rect(110 + 5 * skillIconWidth, 220, skillIconWidth, 20), "" + m_BloodRitual.maxCooldown.ToString("F0"));
-                GUI.Box(new Rect(110 + 5 * skillIconWidth, 240, skillIconWidth, 20), "" + m_BloodRitual.curCooldown.ToString("F1"));
+                _skillMana[i] = m_HealSelf.manacost.ToString("F0");
+                _skillDmg[i] = "";
+                _skillHeal[i] = m_HealSelf.getHealingAmount().ToString("F0");
+                _skillCdMax[i] = m_HealSelf.maxCooldown.ToString("F0");
+                _skillCdCur[i] = m_HealSelf.curCooldown.ToString("F1");
             }
-
-
-            if (curPlayerLevel >= 8)
+            else if (i == 4 && m_Meteor != null)
             {
-                GUI.Box(new Rect(110 + 6 * skillIconWidth, 90, skillIconWidth, 70), backgroundTexture);
-                GUI.Box(new Rect(110 + 6 * skillIconWidth, 90, skillIconWidth, 70), "F");
-                GUI.DrawTexture(new Rect(110 + 6 * skillIconWidth, 110, skillIconWidth, 50), freezeTimeTexture);
-                GUI.DrawTexture(new Rect(110 + 6 * skillIconWidth, 110, skillIconWidth, 50), frameTexture);
-
-                GUI.Box(new Rect(110 + 6 * skillIconWidth, 160, skillIconWidth, 20), "" + m_FreezeTime.manacost.ToString("F0"));
-                GUI.Box(new Rect(110 + 6 * skillIconWidth, 180, skillIconWidth, 20), "-");
-                GUI.Box(new Rect(110 + 6 * skillIconWidth, 200, skillIconWidth, 20), "-");
-                GUI.Box(new Rect(110 + 6 * skillIconWidth, 220, skillIconWidth, 20), "" + m_FreezeTime.maxCooldown.ToString("F0"));
-                GUI.Box(new Rect(110 + 6 * skillIconWidth, 240, skillIconWidth, 20), "" + m_FreezeTime.curCooldown.ToString("F1"));
+                _skillMana[i] = m_Meteor.manacost.ToString("F0");
+                _skillDmg[i] = m_Meteor.getMeteorDamage().ToString("F0");
+                _skillHeal[i] = "";
+                _skillCdMax[i] = m_Meteor.maxCooldown.ToString("F1");
+                _skillCdCur[i] = m_Meteor.curCooldown.ToString("F1");
             }
-
-            if (curPlayerLevel >= 10)
+            else if (i == 5 && m_BloodRitual != null)
             {
-                GUI.Box(new Rect(110 + 7 * skillIconWidth, 90, skillIconWidth, 70), backgroundTexture);
-                GUI.Box(new Rect(110 + 7 * skillIconWidth, 90, skillIconWidth, 70), "");
-                GUI.DrawTexture(new Rect(110 + 7 * skillIconWidth, 110, skillIconWidth, 50), geoManiaTexture);
-                GUI.DrawTexture(new Rect(110 + 7 * skillIconWidth, 110, skillIconWidth, 50), frameTexture);
-
-                GUI.Box(new Rect(110 + 7 * skillIconWidth, 160, skillIconWidth, 20), "");
-                GUI.Box(new Rect(110 + 7 * skillIconWidth, 180, skillIconWidth, 20), "");
-                GUI.Box(new Rect(110 + 7 * skillIconWidth, 200, skillIconWidth, 20), "");
-                GUI.Box(new Rect(110 + 7 * skillIconWidth, 220, skillIconWidth, 20), "");
-                GUI.Box(new Rect(110 + 7 * skillIconWidth, 240, skillIconWidth, 20), "");
+                _skillMana[i] = m_BloodRitual.manacost.ToString("F0");
+                _skillDmg[i] = "";
+                _skillHeal[i] = "";
+                _skillCdMax[i] = m_BloodRitual.maxCooldown.ToString("F0");
+                _skillCdCur[i] = m_BloodRitual.curCooldown.ToString("F1");
             }
-
-            //FADENKREUZ
-            float xMin = (Screen.width / 2) - (crosshairImage.width / 2);
-            float yMin = (Screen.height / 2) - (crosshairImage.height / 2);
-            GUI.DrawTexture(new Rect(xMin, yMin, crosshairImage.width, crosshairImage.height), crosshairImage);
-
-            //BLUTFLECKEN
-            if (curPlayerHealth <= (maxPlayerHealth * 0.3f) && curPlayerHealth >= (maxPlayerHealth * 0.2f))
+            else if (i == 6 && m_FreezeTime != null)
             {
-                GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), bloodTexture1);
+                _skillMana[i] = m_FreezeTime.manacost.ToString("F0");
+                _skillDmg[i] = "-";
+                _skillHeal[i] = "-";
+                _skillCdMax[i] = m_FreezeTime.maxCooldown.ToString("F0");
+                _skillCdCur[i] = m_FreezeTime.curCooldown.ToString("F1");
             }
-            else if (curPlayerHealth <= (maxPlayerHealth * 0.2f) && curPlayerHealth >= (maxPlayerHealth * 0.1f))
+            else if (i == 7)
             {
-                GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), bloodTexture2);
-            }
-            else if (curPlayerHealth <= (maxPlayerHealth * 0.1f) && curPlayerHealth >= 0)
-            {
-                GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), bloodTexture3);
+                _skillMana[i] = "";
+                _skillDmg[i] = "";
+                _skillHeal[i] = "";
+                _skillCdMax[i] = "";
+                _skillCdCur[i] = "";
             }
         }
     }
-
-    private void adjustBarLength()
-    {
-        playerHealthBarLength = (Screen.width / 4) * (curPlayerHealth / (float)maxPlayerHealth);
-        playerManaBarLength = (Screen.width / 4) * (curPlayerMana / (float)maxPlayerMana);
-        playerExpBarLength = (Screen.width / 4) * (playerExp / (float)playerExpNeededForLevelUp);
-    }
-
 }
