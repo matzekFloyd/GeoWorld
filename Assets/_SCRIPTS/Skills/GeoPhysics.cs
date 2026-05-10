@@ -1,22 +1,26 @@
 ﻿using UnityEngine;
 using System.Collections;
+using UnityStandardAssets.Characters.FirstPerson;
 
 public class GeoPhysics : SkillBasic {
 
     private int curPlayerLevel;
     private float geoHealthreg = 0.0f;
 
-    // Use this for initialization
+    FirstPersonController _firstPerson;
+
     void Start () {
-        player = GameObject.FindGameObjectWithTag("Player1");
+        if (player != null)
+            _firstPerson = player.GetComponent<FirstPersonController>();
     }
 
-    // Update is called once per frame
     void Update () {
+        if (m_Player == null || _firstPerson == null)
+            return;
 
-        curPlayerLevel = player.GetComponent<PlayerCharacter>().getCurLevel();
+        curPlayerLevel = m_Player.getCurLevel();
 
-        if (player.GetComponent<PlayerCharacter>().skillAvailable(1))
+        if (m_Player.skillAvailable(1))
         {
             enhanceCharacterStatistics();
         }
@@ -24,18 +28,14 @@ public class GeoPhysics : SkillBasic {
 
     public void enhanceCharacterStatistics()
     {
-        //MOVEMENTSPEED
-        player.GetComponent<UnityStandardAssets.Characters.FirstPerson.FirstPersonController>().m_WalkSpeed = calculateMovementSpeedBuff(curPlayerLevel);
+        if (_firstPerson == null || m_Player == null)
+            return;
 
-        //JUMPSPEED
-        player.GetComponent<UnityStandardAssets.Characters.FirstPerson.FirstPersonController>().m_JumpSpeed = calculateJumpSpeedBuff(curPlayerLevel);
+        _firstPerson.m_WalkSpeed = calculateMovementSpeedBuff(curPlayerLevel);
+        _firstPerson.m_JumpSpeed = calculateJumpSpeedBuff(curPlayerLevel);
+        _firstPerson.m_GravityMultiplier = calculateGravityMultiplier(curPlayerLevel);
 
-        //GRAVITY
-        player.GetComponent<UnityStandardAssets.Characters.FirstPerson.FirstPersonController>().m_GravityMultiplier = calculateGravityMultiplier(curPlayerLevel);
-
-        //HP-REGENARATION
-        player.GetComponent<PlayerCharacter>().changeCurrentHealth(calculateHealthRegeneration(curPlayerLevel) *Time.deltaTime);              
-
+        m_Player.changeCurrentHealth(calculateHealthRegeneration(curPlayerLevel) * Time.deltaTime);
     }
 
 
@@ -43,8 +43,9 @@ public class GeoPhysics : SkillBasic {
     public float calculateMovementSpeedBuff(int playerLevel)
     {
         float movementSpeed = 10;
+        int maxLevel = m_Player.getMaxLevel();
 
-        for (int i = 0; i <= player.GetComponent<PlayerCharacter>().getMaxLevel(); i++)
+        for (int i = 0; i <= maxLevel; i++)
         {
             if (playerLevel == i) movementSpeed = i + 10;
         }
@@ -57,8 +58,9 @@ public class GeoPhysics : SkillBasic {
     public float calculateJumpSpeedBuff(int playerLevel)
     {
         float jumpSpeed = 8;
+        int maxLevel = m_Player.getMaxLevel();
 
-        for(int i = 0; i <= player.GetComponent<PlayerCharacter>().getMaxLevel(); i++)
+        for(int i = 0; i <= maxLevel; i++)
         {
             if (playerLevel == i) jumpSpeed = i + 10;
         }
@@ -71,8 +73,9 @@ public class GeoPhysics : SkillBasic {
     public float calculateGravityMultiplier(int playerLevel)
     {
         float gravityMultiplier = 1.85f;
+        int maxLevel = m_Player.getMaxLevel();
 
-        for (int i = 0; i <= player.GetComponent<PlayerCharacter>().getMaxLevel(); i++)
+        for (int i = 0; i <= maxLevel; i++)
         {
             if (playerLevel == i) gravityMultiplier = 2f - i * 0.125f;
         }
@@ -84,8 +87,9 @@ public class GeoPhysics : SkillBasic {
 
     public float calculateHealthRegeneration(int playerLevel)
     {
+        int maxLevel = m_Player.getMaxLevel();
 
-        for (int i = 0; i <= player.GetComponent<PlayerCharacter>().getMaxLevel(); i++)
+        for (int i = 0; i <= maxLevel; i++)
         {
             if (playerLevel == i) geoHealthreg = i * 0.5f;
         }

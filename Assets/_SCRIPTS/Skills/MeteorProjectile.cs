@@ -6,18 +6,25 @@ public class MeteorProjectile : Meteor {
     public Transform explosionPrefab;
     public float explosionRange;
 
-    // Use this for initialization
+    PlayerCharacter _ownerPlayer;
+
     void Start () {
         Destroy(this.gameObject, 10f);
+        if (player != null)
+            _ownerPlayer = player.GetComponent<PlayerCharacter>();
     }
 
-    // Update is called once per frame
     void Update () {
-        explosionRange = player.GetComponent<PlayerCharacter>().getCurLevel() * 2f;
+        if (_ownerPlayer == null)
+            return;
+        explosionRange = _ownerPlayer.getCurLevel() * 2f;
     }
 
     void OnCollisionEnter(Collision collision)
     {
+        if (_ownerPlayer == null)
+            return;
+
         if (collision.gameObject.tag == "Player1")
         {
 
@@ -32,6 +39,8 @@ public class MeteorProjectile : Meteor {
             Collider[] colliders;
             colliders = Physics.OverlapSphere(pos, explosionRange);
 
+            float levelDamageScale = _ownerPlayer.getCurLevel() * 100f;
+
             for (int i = 0; i < colliders.Length; i++)
             {
                 if (colliders[i].gameObject.tag == "Enemy")
@@ -41,7 +50,7 @@ public class MeteorProjectile : Meteor {
                     float distanceRatio = distanceFromCenter / explosionRange;
                     float distanceMultiplier = distanceRatio * 0.75f + 0.25f;
 
-                    colliders[i].gameObject.GetComponent<EnemyAI>().getDamaged(player.GetComponent<PlayerCharacter>().getCurLevel() * 100 * distanceMultiplier);
+                    colliders[i].gameObject.GetComponent<EnemyAI>().getDamaged(levelDamageScale * distanceMultiplier);
 
                     if (colliders[i].transform.position != pos)
                     {
