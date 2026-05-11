@@ -51,10 +51,10 @@ public class HomingMissileAI : MonoBehaviour {
             return;
         smallMissileDmg = pc.getCurLevel() * 30;
         bigMissileDmg = pc.getCurLevel() * 100;
-        charge();
+        charge(pc);
     }
 
-    private void charge()
+    private void charge(PlayerCharacter pc)
     {
             Debug.DrawLine(target.transform.position, transform.position, Color.blue);
 
@@ -67,8 +67,10 @@ public class HomingMissileAI : MonoBehaviour {
 
             if (Vector3.Distance(target.transform.position, transform.position) < dmgDistance)
             {
-                if (this.gameObject.tag == "SmallHomingMissile") target.GetComponent<PlayerCharacter>().changeCurrentHealth(-smallMissileDmg);
-                if (this.gameObject.tag == "BigHomingMissile") target.GetComponent<PlayerCharacter>().changeCurrentHealth(-bigMissileDmg);
+                if (gameObject.CompareTag("SmallHomingMissile"))
+                    pc.ApplyIncomingDamage(smallMissileDmg, transform.position, true, CombatHitSeverity.Medium);
+                else if (gameObject.CompareTag("BigHomingMissile"))
+                    pc.ApplyIncomingDamage(bigMissileDmg, transform.position, true, CombatHitSeverity.Heavy);
                 if (_lifetimeRoutine != null)
                 {
                     StopCoroutine(_lifetimeRoutine);

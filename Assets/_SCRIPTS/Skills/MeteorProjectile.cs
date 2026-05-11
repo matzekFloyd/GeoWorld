@@ -87,7 +87,7 @@ public class MeteorProjectile : Meteor {
                     float distanceRatio = distanceFromCenter / explosionRange;
                     float distanceMultiplier = distanceRatio * 0.75f + 0.25f;
 
-                    colliders[i].gameObject.GetComponent<EnemyAI>().getDamaged(levelDamageScale * distanceMultiplier);
+                    colliders[i].gameObject.GetComponent<EnemyAI>().getDamaged(levelDamageScale * distanceMultiplier, pos, CombatHitSeverity.Heavy);
 
                     if (colliders[i].transform.position != pos)
                     {

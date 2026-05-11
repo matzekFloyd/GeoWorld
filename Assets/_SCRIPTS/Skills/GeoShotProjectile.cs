@@ -67,7 +67,7 @@ public class GeoShotProjectile : GeoShot{
 
         if (something.gameObject.tag == "Enemy" && geoManiaActivated())
         {
-            something.gameObject.GetComponent<EnemyAI>().getDamaged(damagePerHit);
+            something.gameObject.GetComponent<EnemyAI>().getDamaged(damagePerHit, transform.position, CombatHitSeverity.Light);
             _hit = true;
             if (_lifetimeRoutine != null)
             {
@@ -82,7 +82,7 @@ public class GeoShotProjectile : GeoShot{
         }
         else if (something.gameObject.tag == "Enemy")
         {
-            something.gameObject.GetComponent<EnemyAI>().getDamaged(damagePerHit);
+            something.gameObject.GetComponent<EnemyAI>().getDamaged(damagePerHit, transform.position, CombatHitSeverity.Light);
             _hit = true;
             if (_lifetimeRoutine != null)
             {

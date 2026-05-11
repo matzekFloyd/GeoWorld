@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
 using UnityEngine;
@@ -40,7 +41,14 @@ public sealed class GameplayHudView : MonoBehaviour
     bool _fxFreezeOn;
     Texture2D _fxFreezeTex;
 
+    Image _hitTakenCenterPulse;
+    Image[] _hitTakenEdges;
+    Coroutine _hitTakenRoutine;
+
+    RectTransform _damageNumbersHost;
+
     static readonly Dictionary<Texture2D, Sprite> SpriteCache = new Dictionary<Texture2D, Sprite>();
+    static Sprite _solidWhiteSprite;
 
     SkillColumn[] _columns;
     RectTransform _skillsRowRt;
@@ -131,6 +139,9 @@ public sealed class GameplayHudView : MonoBehaviour
         _fxBloodB = CreateFullscreenImage(canvasRt, "FxBloodB");
         _fxFreeze = CreateFullscreenImage(canvasRt, "FxFreeze");
 
+        BuildCombatHitOverlays(canvasRt);
+        BuildDamageNumbersHost(canvasRt);
+
         _built = true;
         ClearStringCache();
     }
@@ -220,6 +231,130 @@ public sealed class GameplayHudView : MonoBehaviour
     }
 
     public void ConfigureFreezeFx(bool on, Texture2D tex) => SetFullscreenFx(ref _fxFreezeOn, ref _fxFreezeTex, _fxFreeze, on, tex);
+
+    /// <summary>Brief non-flashing edge + center tint when the player takes damage (accessibility-friendly caps).</summary>
+    public void PlayHitTakenFeedback(bool hasDirection, float dirX, float dirY, float centerPeakAlpha, float edgePeakAlpha, float duration, bool reducedMotion)
+    {
+        if (!_built || _hitTakenCenterPulse == null)
+            return;
+        if (_hitTakenRoutine != null)
+            StopCoroutine(_hitTakenRoutine);
+        _hitTakenRoutine = StartCoroutine(HitTakenFeedbackRoutine(hasDirection, dirX, dirY, centerPeakAlpha, edgePeakAlpha, duration, reducedMotion));
+    }
+
+    IEnumerator HitTakenFeedbackRoutine(bool hasDirection, float dirX, float dirY, float centerPeak, float edgePeak, float duration, bool reducedMotion)
+    {
+        int edge = -1;
+        if (hasDirection && _hitTakenEdges != null && _hitTakenEdges.Length == 4)
+        {
+            if (Mathf.Abs(dirX) >= Mathf.Abs(dirY))
+                edge = dirX < 0f ? 0 : 1;
+            else
+                edge = dirY < 0f ? 2 : 3;
+        }
+
+        const float r = 1f;
+        const float g = 0.1f;
+        const float b = 0.06f;
+
+        _hitTakenCenterPulse.gameObject.SetActive(true);
+        Image edgeImg = null;
+        if (edge >= 0 && edge < _hitTakenEdges.Length)
+        {
+            edgeImg = _hitTakenEdges[edge];
+            edgeImg.gameObject.SetActive(true);
+            var ec = edgeImg.color;
+            edgeImg.color = new Color(ec.r, ec.g, ec.b, 0f);
+        }
+
+        float t = 0f;
+        while (t < duration)
+        {
+            t += Time.deltaTime;
+            float u = Mathf.Sin(Mathf.Clamp01(t / duration) * Mathf.PI);
+            float centerA = centerPeak * u * (reducedMotion ? 0.85f : 1f);
+            _hitTakenCenterPulse.color = new Color(r, g, b, Mathf.Clamp01(centerA));
+
+            if (edgeImg != null)
+            {
+                float ea = edgePeak * u * (reducedMotion ? 0.8f : 1f);
+                var ec = edgeImg.color;
+                edgeImg.color = new Color(ec.r, ec.g, ec.b, Mathf.Clamp01(ea));
+            }
+            yield return null;
+        }
+
+        _hitTakenCenterPulse.color = new Color(r, g, b, 0f);
+        _hitTakenCenterPulse.gameObject.SetActive(false);
+        if (edgeImg != null)
+        {
+            var ec = edgeImg.color;
+            edgeImg.color = new Color(ec.r, ec.g, ec.b, 0f);
+            edgeImg.gameObject.SetActive(false);
+        }
+        _hitTakenRoutine = null;
+    }
+
+    void BuildCombatHitOverlays(RectTransform canvasRt)
+    {
+        _hitTakenCenterPulse = CreateFullscreenImage(canvasRt, "HitTakenCenterPulse");
+        _hitTakenCenterPulse.sprite = GetSolidWhiteSprite();
+        _hitTakenCenterPulse.color = new Color(1f, 0.1f, 0.06f, 0f);
+        _hitTakenCenterPulse.gameObject.SetActive(false);
+
+        _hitTakenEdges = new Image[4];
+        _hitTakenEdges[0] = CreateEdgeTint(canvasRt, "HitEdgeL", new Vector2(0f, 0f), new Vector2(0.14f, 1f));
+        _hitTakenEdges[1] = CreateEdgeTint(canvasRt, "HitEdgeR", new Vector2(0.86f, 0f), new Vector2(1f, 1f));
+        _hitTakenEdges[2] = CreateEdgeTint(canvasRt, "HitEdgeB", new Vector2(0f, 0f), new Vector2(1f, 0.12f));
+        _hitTakenEdges[3] = CreateEdgeTint(canvasRt, "HitEdgeT", new Vector2(0f, 0.88f), new Vector2(1f, 1f));
+
+        for (int i = 0; i < _hitTakenEdges.Length; i++)
+            _hitTakenEdges[i].transform.SetAsLastSibling();
+        _hitTakenCenterPulse.transform.SetAsLastSibling();
+    }
+
+    static Image CreateEdgeTint(RectTransform canvas, string name, Vector2 anchorMin, Vector2 anchorMax)
+    {
+        var go = CreateUIObject(name, canvas);
+        var rt = go.GetComponent<RectTransform>();
+        rt.anchorMin = anchorMin;
+        rt.anchorMax = anchorMax;
+        rt.offsetMin = Vector2.zero;
+        rt.offsetMax = Vector2.zero;
+        var img = go.AddComponent<Image>();
+        img.sprite = GetSolidWhiteSprite();
+        img.type = Image.Type.Simple;
+        img.color = new Color(1f, 0.06f, 0.02f, 0f);
+        img.raycastTarget = false;
+        go.SetActive(false);
+        return img;
+    }
+
+    static Sprite GetSolidWhiteSprite()
+    {
+        if (_solidWhiteSprite == null)
+        {
+            var t = Texture2D.whiteTexture;
+            _solidWhiteSprite = Sprite.Create(t, new Rect(0, 0, t.width, t.height), new Vector2(0.5f, 0.5f), 100f);
+        }
+        return _solidWhiteSprite;
+    }
+
+    void BuildDamageNumbersHost(RectTransform canvasRt)
+    {
+        var go = new GameObject("DamageNumbersHost", typeof(RectTransform));
+        var rt = (RectTransform)go.transform;
+        go.transform.SetParent(canvasRt, false);
+        StretchFull(rt);
+        go.transform.SetAsLastSibling();
+        _damageNumbersHost = rt;
+    }
+
+    /// <summary>Full-screen overlay parent for pooled world-anchored damage text (above most HUD widgets).</summary>
+    public RectTransform DamageNumbersHost => _damageNumbersHost;
+
+    /// <summary>Same font as HUD stat labels for floating combat numbers.</summary>
+    public static Font HudUiFont => UiFont;
 
     public void RefreshGameplay(
         bool showGameplay,

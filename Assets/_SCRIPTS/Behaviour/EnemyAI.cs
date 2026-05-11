@@ -155,8 +155,9 @@ public class EnemyAI : MonoBehaviour {
     {
         if (currentlyAbleToAttack && freezeFinished)
         {
-            PlayerCharacter pcHealth = (PlayerCharacter)target.GetComponent("PlayerCharacter");
-            pcHealth.changeCurrentHealth(-damage);
+            var pcHealth = target.GetComponent<PlayerCharacter>();
+            if (pcHealth != null)
+                pcHealth.ApplyIncomingDamage(damage, transform.position, true, CombatHitSeverity.Light);
             attackTimer = coolDown;
         }
         
@@ -240,7 +241,7 @@ public class EnemyAI : MonoBehaviour {
         }
     }
 
-    public void getDamaged(float damage)
+    public void getDamaged(float damage, Vector3? hitOrigin = null, CombatHitSeverity severity = CombatHitSeverity.Light)
     {
         EnsureEnemyCharacter();
         if (m_EnemyCharacter == null)
@@ -250,6 +251,10 @@ public class EnemyAI : MonoBehaviour {
 
         m_EnemyCharacter.curHealth -= damage;
         state = State.Damaged;
+
+        var fx = CombatFeedback.Instance;
+        if (fx != null)
+            fx.NotifyEnemyHit(transform, damage, hitOrigin, severity);
     }
 
     private void damaged()

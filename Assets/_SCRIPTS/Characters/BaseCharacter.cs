@@ -50,7 +50,7 @@ public class BaseCharacter : MonoBehaviour
         return false;
     }
 
-    public void changeCurrentHealth(float change)
+    protected void ApplyHealthChange(float change)
     {
         curHealth += change;
 
@@ -60,7 +60,11 @@ public class BaseCharacter : MonoBehaviour
         if (maxHealth < 1)
             maxHealth = 1;
 
-
         healthBarLength = (Screen.width / 4) * (curHealth / (float)maxHealth);
+    }
+
+    public virtual void changeCurrentHealth(float change)
+    {
+        ApplyHealthChange(change);
     }
 }
