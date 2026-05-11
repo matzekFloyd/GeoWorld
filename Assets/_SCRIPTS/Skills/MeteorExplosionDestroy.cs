@@ -1,14 +1,14 @@
 ﻿using UnityEngine;
-using System.Collections;
 
 public class MeteorExplosionDestroy : MonoBehaviour {
 
-	// Use this for initialization
-	void Start () {
-        Destroy(this.gameObject, 0.5f);
+	void OnEnable () {
+        CancelInvoke(nameof(ReturnToPoolOrDestroy));
+        Invoke(nameof(ReturnToPoolOrDestroy), 0.5f);
     }
 
-    // Update is called once per frame
-    void Update () {
-	}
+    void ReturnToPoolOrDestroy()
+    {
+        GeoWorldObjectPools.Release(gameObject);
+    }
 }

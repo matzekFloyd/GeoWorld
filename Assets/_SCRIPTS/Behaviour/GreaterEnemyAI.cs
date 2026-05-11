@@ -38,8 +38,8 @@ public class GreaterEnemyAI : MonoBehaviour {
     private bool damagedFinished;
     //System.DateTime timeDmgWasApplied;
 
-    // Use this for initialization
-    void Start () {
+    void OnEnable()
+    {
         state = State.Spawn;
 
         enemyGenerator = GameObject.FindGameObjectWithTag("Spawn");
@@ -49,7 +49,11 @@ public class GreaterEnemyAI : MonoBehaviour {
         moveTimer = 3;
         shootSmallTimer = 2;
         shootBigTimer = 10;
-        
+        spawnFinished = false;
+        moveFinished = false;
+        shootSmallFinished = false;
+        shootBigFinished = false;
+        damagedFinished = false;
     }
 
     // Update is called once per frame
@@ -125,7 +129,11 @@ public class GreaterEnemyAI : MonoBehaviour {
 
     private void shootSmall()
     {
-        Instantiate(smallHomingMissile, this.gameObject.transform.position, this.gameObject.transform.rotation);
+        var pools = GeoWorldObjectPools.Instance;
+        if (pools != null && smallHomingMissile != null)
+            pools.Acquire(smallHomingMissile, transform.position, transform.rotation, null);
+        else if (smallHomingMissile != null)
+            Instantiate(smallHomingMissile, transform.position, transform.rotation);
         shootSmallTimer = 3;
 
         state = State.Idle;
@@ -135,7 +143,11 @@ public class GreaterEnemyAI : MonoBehaviour {
 
     private void shootBig()
     {
-        Instantiate(bigHomingMissile, this.gameObject.transform.position, this.gameObject.transform.rotation);
+        var pools = GeoWorldObjectPools.Instance;
+        if (pools != null && bigHomingMissile != null)
+            pools.Acquire(bigHomingMissile, transform.position, transform.rotation, null);
+        else if (bigHomingMissile != null)
+            Instantiate(bigHomingMissile, transform.position, transform.rotation);
         
         shootBigTimer = 15;
 
@@ -290,7 +302,11 @@ public class GreaterEnemyAI : MonoBehaviour {
         if (ec != null && ec.isBoss)
             go.greaterEnemyKillCounter += GameBalanceHelper.BossGreaterKillCounterBonus;
      
-        Destroy(this.gameObject, 0);
+        var pooled = GetComponent<PooledObject>();
+        if (pooled != null && pooled.IsManaged)
+            pooled.ReleaseToPool();
+        else
+            Destroy(this.gameObject, 0);
 
     }
 }

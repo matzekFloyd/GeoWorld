@@ -1,6 +1,6 @@
 ﻿using UnityEngine;
-using System.Collections;
 
+[DefaultExecutionOrder(-50)]
 public class EnemyCharacter : BaseCharacter {
     
     private GameObject player;
@@ -10,12 +10,27 @@ public class EnemyCharacter : BaseCharacter {
 
     [Tooltip("Enable on boss prefabs for extra health/EXP and scoreboard bonus on death.")]
     public bool isBoss;
-    
-    // Use this for initialization
-    void Start () {
 
-        originalColor = this.gameObject.GetComponent<Renderer>().material.color;
+    Color _paletteFromSharedMaterial;
+
+    void Awake()
+    {
+        var r = GetComponent<Renderer>();
+        if (r != null && r.sharedMaterial != null)
+            _paletteFromSharedMaterial = r.sharedMaterial.color;
+    }
+
+    void OnEnable()
+    {
         player = GameObject.FindGameObjectWithTag("Player1");
+        if (player == null)
+            return;
+
+        if (GetComponent<Renderer>() != null)
+        {
+            originalColor = _paletteFromSharedMaterial;
+            GetComponent<Renderer>().material.color = originalColor;
+        }
 
         setEnemyStatistics(player.GetComponent<PlayerCharacter>().getCurLevel(), player.GetComponent<PlayerCharacter>().getExpNeededForLevelUp());
     }

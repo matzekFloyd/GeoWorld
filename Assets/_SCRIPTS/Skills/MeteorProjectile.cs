@@ -1,5 +1,5 @@
-﻿using UnityEngine;
-using System.Collections;
+﻿using System.Collections;
+using UnityEngine;
 
 public class MeteorProjectile : Meteor {
 
@@ -7,11 +7,40 @@ public class MeteorProjectile : Meteor {
     public float explosionRange;
 
     PlayerCharacter _ownerPlayer;
+    bool _hit;
+    Coroutine _lifetimeRoutine;
 
-    void Start () {
-        Destroy(this.gameObject, 10f);
+    void OnEnable()
+    {
+        _hit = false;
+        if (_lifetimeRoutine != null)
+        {
+            StopCoroutine(_lifetimeRoutine);
+            _lifetimeRoutine = null;
+        }
+        _lifetimeRoutine = StartCoroutine(LifetimeThenRelease(10f));
         if (player != null)
             _ownerPlayer = player.GetComponent<PlayerCharacter>();
+    }
+
+    void OnDisable()
+    {
+        if (_lifetimeRoutine != null)
+        {
+            StopCoroutine(_lifetimeRoutine);
+            _lifetimeRoutine = null;
+        }
+    }
+
+    IEnumerator LifetimeThenRelease(float seconds)
+    {
+        yield return new WaitForSeconds(seconds);
+        _lifetimeRoutine = null;
+        if (!_hit)
+        {
+            _hit = true;
+            GeoWorldObjectPools.Release(gameObject);
+        }
     }
 
     void Update () {
@@ -22,7 +51,7 @@ public class MeteorProjectile : Meteor {
 
     void OnCollisionEnter(Collision collision)
     {
-        if (_ownerPlayer == null)
+        if (_hit || _ownerPlayer == null)
             return;
 
         if (collision.gameObject.tag == "Player1")
@@ -34,7 +63,15 @@ public class MeteorProjectile : Meteor {
             ContactPoint contact = collision.contacts[0];
             Quaternion rot = Quaternion.FromToRotation(Vector3.up, contact.normal);
             Vector3 pos = contact.point;
-            Instantiate(explosionPrefab, pos, rot);
+            if (explosionPrefab != null)
+            {
+                var pools = GeoWorldObjectPools.Instance;
+                var fxRoot = explosionPrefab.gameObject;
+                if (pools != null)
+                    pools.Acquire(fxRoot, pos, rot, null);
+                else
+                    Instantiate(explosionPrefab, pos, rot);
+            }
 
             Collider[] colliders;
             colliders = Physics.OverlapSphere(pos, explosionRange);
@@ -60,7 +97,13 @@ public class MeteorProjectile : Meteor {
                 }
 
             }
-            Destroy(gameObject);
+            _hit = true;
+            if (_lifetimeRoutine != null)
+            {
+                StopCoroutine(_lifetimeRoutine);
+                _lifetimeRoutine = null;
+            }
+            GeoWorldObjectPools.Release(gameObject);
         }
     }
 }

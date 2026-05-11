@@ -1,5 +1,4 @@
 ﻿using UnityEngine;
-using System.Collections;
 using System.Collections.Generic;
 
 public class EnemyGenerator : MonoBehaviour {
@@ -28,6 +27,19 @@ public class EnemyGenerator : MonoBehaviour {
 
     public State state; //lokale Variable für den aktuellen State
 
+    [Header("Pooling / spawn burst")]
+    [Tooltip("Max normal enemies spawned per frame when catching up to level × enemiesPerLevel.")]
+    [SerializeField] int maxEnemySpawnsPerFrame = 16;
+    [Tooltip("Inactive instances created at scene start per enemy prefab (reduces Instantiate spikes on first big spawn).")]
+    [SerializeField] int prewarmInstancesPerEnemyPrefab = 24;
+    [Tooltip("Inactive boss instances to keep ready (usually 0 or 1).")]
+    [SerializeField] int prewarmEndBossInstances = 1;
+
+    int m_EnemySpawnRemaining;
+    int m_EnemySpawnWaveIndex;
+    int m_LastBossSpawnForPlayerLevel = -1;
+    GeoWorldObjectPools m_Pools;
+
 	// Use this for initialization
 	void Start () {
         targets = new List<Transform>();
@@ -39,6 +51,21 @@ public class EnemyGenerator : MonoBehaviour {
         }
         AddAllEnemies();
         state = EnemyGenerator.State.Initialize;
+        m_Pools = GeoWorldObjectPools.Instance;
+        PrewarmEnemyPools();
+    }
+
+    void PrewarmEnemyPools()
+    {
+        if (m_Pools == null || enemyPrefabs == null)
+            return;
+        foreach (var p in enemyPrefabs)
+        {
+            if (p != null)
+                m_Pools.Prewarm(p, prewarmInstancesPerEnemyPrefab);
+        }
+        if (endBossPrefab != null)
+            m_Pools.Prewarm(endBossPrefab, prewarmEndBossInstances);
     }
 
     // Update is called once per frame
@@ -80,37 +107,58 @@ public class EnemyGenerator : MonoBehaviour {
     {
         if (m_Player == null) return;
 
-        bool greaterEnemySpawnEnabled = m_Player.getCurLevel() >= GameBalanceHelper.GreaterEnemiesMinPlayerLevel;
-
-        if (greaterEnemySpawnEnabled)
-        {
-
-            if (m_Player.getCurLevel() % GameBalanceHelper.BossSpawnLevelMultiple == 0) spawnEndBoss();            
-        }
-
         int desiredEnemyCount = m_Player.getCurLevel() * GameBalanceHelper.EnemiesPerPlayerLevel;
         int currentEnemyCount = targets.Count;
-        int enemiesToSpawn = desiredEnemyCount - currentEnemyCount;
 
-            GameObject[] gos = AvailableSpawnpoints();
-            int spawnPointCount = gos.Length;
-            
-            for (int i = 0; i < enemiesToSpawn; i++)
+        if (m_EnemySpawnRemaining == 0)
+        {
+            bool greaterEnemySpawnEnabled = m_Player.getCurLevel() >= GameBalanceHelper.GreaterEnemiesMinPlayerLevel;
+            int level = m_Player.getCurLevel();
+            if (greaterEnemySpawnEnabled &&
+                level % GameBalanceHelper.BossSpawnLevelMultiple == 0 &&
+                m_LastBossSpawnForPlayerLevel != level)
             {
-                int selectedSpawnPoint = i % spawnPointCount;
-
-                GameObject enemy = Instantiate(enemyPrefabs[Random.Range(0, enemyPrefabs.Length)],
-                                            gos[selectedSpawnPoint].transform.position,
-                                            Quaternion.identity
-                                            ) as GameObject;
-                enemy.transform.parent = gos[selectedSpawnPoint].transform;
-
-                AddTarget(enemy.transform);
-                if (m_FreezeTime != null)
-                    m_FreezeTime.AddTarget(enemy);
+                spawnEndBoss();
+                m_LastBossSpawnForPlayerLevel = level;
             }
-        
-        state = EnemyGenerator.State.Idle;
+
+            int toSpawn = desiredEnemyCount - currentEnemyCount;
+            if (toSpawn <= 0)
+            {
+                state = EnemyGenerator.State.Idle;
+                return;
+            }
+            m_EnemySpawnRemaining = toSpawn;
+            m_EnemySpawnWaveIndex = 0;
+        }
+
+        GameObject[] gos = AvailableSpawnpoints();
+        int spawnPointCount = gos.Length;
+        if (spawnPointCount == 0)
+        {
+            state = EnemyGenerator.State.Idle;
+            return;
+        }
+
+        int spawnedThisFrame = 0;
+        while (m_EnemySpawnRemaining > 0 && spawnedThisFrame < maxEnemySpawnsPerFrame)
+        {
+            int selectedSpawnPoint = m_EnemySpawnWaveIndex % spawnPointCount;
+            var prefab = enemyPrefabs[Random.Range(0, enemyPrefabs.Length)];
+            GameObject enemy = m_Pools != null
+                ? m_Pools.Acquire(prefab, gos[selectedSpawnPoint].transform.position, Quaternion.identity, gos[selectedSpawnPoint].transform)
+                : Instantiate(prefab, gos[selectedSpawnPoint].transform.position, Quaternion.identity, gos[selectedSpawnPoint].transform);
+
+            AddTarget(enemy.transform);
+            if (m_FreezeTime != null)
+                m_FreezeTime.AddTarget(enemy);
+            m_EnemySpawnWaveIndex++;
+            m_EnemySpawnRemaining--;
+            spawnedThisFrame++;
+        }
+
+        if (m_EnemySpawnRemaining == 0)
+            state = EnemyGenerator.State.Idle;
     }
 
     public void AddAllEnemies()
@@ -153,22 +201,16 @@ public class EnemyGenerator : MonoBehaviour {
 
     private GameObject[] AvailableSpawnpoints()
     {
-        List<GameObject> y = new List<GameObject>();
-
-        for(int i = 0; i < spawnPoints.Length; i++)
-        {
-            y.Add(spawnPoints[i]);
-        }
-
-        return y.ToArray();
+        return spawnPoints;
     }
 
     public void spawnEndBoss()
     {
         int randomizeSpawnpointValue = Random.Range(1, 4);
 
-        GameObject endBoss = Instantiate(endBossPrefab, greaterEnemySpawnPoints[randomizeSpawnpointValue].transform.position, Quaternion.identity) as GameObject;
-        endBoss.transform.parent = greaterEnemySpawnPoints[randomizeSpawnpointValue].transform;
+        GameObject endBoss = m_Pools != null
+            ? m_Pools.Acquire(endBossPrefab, greaterEnemySpawnPoints[randomizeSpawnpointValue].transform.position, Quaternion.identity, greaterEnemySpawnPoints[randomizeSpawnpointValue].transform)
+            : Instantiate(endBossPrefab, greaterEnemySpawnPoints[randomizeSpawnpointValue].transform.position, Quaternion.identity, greaterEnemySpawnPoints[randomizeSpawnpointValue].transform);
         EnemyCharacter bossChar = endBoss.GetComponent<EnemyCharacter>();
         if (bossChar != null)
             bossChar.isBoss = true;
