@@ -86,6 +86,14 @@ public sealed class CombatFeedback : MonoBehaviour
         if (hud != null)
             hud.PlayHitTakenFeedback(hasDir, dirX, dirY, centerPeak, edgePeak, 0.16f, reduced);
 
+        var dmgPool = FloatingDamageNumberPool.Instance;
+        if (dmgPool != null)
+        {
+            var p = GameObject.FindGameObjectWithTag("Player1");
+            if (p != null)
+                dmgPool.SpawnPlayerDamageTaken(p.transform, amount, severity);
+        }
+
         if (_playerHitClip != null && _audio != null)
             _audio.PlayOneShot(_playerHitClip, Mathf.Clamp01(0.55f + amount / 500f));
 
@@ -132,6 +140,16 @@ public sealed class CombatFeedback : MonoBehaviour
         }
 
         StartCoroutine(ScalePunchRoutine(enemyRoot, punch, dur));
+
+        var dmgPool = FloatingDamageNumberPool.Instance;
+        if (dmgPool != null)
+        {
+            bool isBoss = false;
+            var ec = enemyRoot.GetComponent<EnemyCharacter>();
+            if (ec != null)
+                isBoss = ec.isBoss;
+            dmgPool.SpawnEnemyDamage(enemyRoot, damage, severity, isBoss);
+        }
     }
 
     bool TryScreenDirection(Vector3 world, out float dx, out float dy)

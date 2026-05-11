@@ -69,6 +69,8 @@ public class UserInterface : MonoBehaviour
             _hud = gameObject.AddComponent<GameplayHudView>();
         if (GetComponent<CombatFeedback>() == null)
             gameObject.AddComponent<CombatFeedback>();
+        if (GetComponent<FloatingDamageNumberPool>() == null)
+            gameObject.AddComponent<FloatingDamageNumberPool>();
     }
 
     void Start()
@@ -88,6 +90,9 @@ public class UserInterface : MonoBehaviour
         m_GameOver = GetComponent<GameOver>();
 
         _hud.EnsureBuilt(this);
+        var dmgPool = GetComponent<FloatingDamageNumberPool>();
+        if (dmgPool != null && _hud.DamageNumbersHost != null)
+            dmgPool.BindAndPrewarm(_hud.DamageNumbersHost);
         if (crosshairImage != null)
             _hud.ApplyCrosshair(GameplayHudView.SpriteFromTexture(crosshairImage));
         _hud.ApplyBarSprites(

@@ -110,7 +110,7 @@ public sealed class GeoWorldObjectPools : MonoBehaviour
     static void ResetRigidbody(GameObject go)
     {
         var rb = go.GetComponent<Rigidbody>();
-        if (rb == null)
+        if (rb == null || rb.isKinematic)
             return;
         rb.linearVelocity = Vector3.zero;
         rb.angularVelocity = Vector3.zero;

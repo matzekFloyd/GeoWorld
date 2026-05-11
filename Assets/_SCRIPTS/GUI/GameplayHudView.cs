@@ -45,6 +45,8 @@ public sealed class GameplayHudView : MonoBehaviour
     Image[] _hitTakenEdges;
     Coroutine _hitTakenRoutine;
 
+    RectTransform _damageNumbersHost;
+
     static readonly Dictionary<Texture2D, Sprite> SpriteCache = new Dictionary<Texture2D, Sprite>();
     static Sprite _solidWhiteSprite;
 
@@ -138,6 +140,7 @@ public sealed class GameplayHudView : MonoBehaviour
         _fxFreeze = CreateFullscreenImage(canvasRt, "FxFreeze");
 
         BuildCombatHitOverlays(canvasRt);
+        BuildDamageNumbersHost(canvasRt);
 
         _built = true;
         ClearStringCache();
@@ -336,6 +339,22 @@ public sealed class GameplayHudView : MonoBehaviour
         }
         return _solidWhiteSprite;
     }
+
+    void BuildDamageNumbersHost(RectTransform canvasRt)
+    {
+        var go = new GameObject("DamageNumbersHost", typeof(RectTransform));
+        var rt = (RectTransform)go.transform;
+        go.transform.SetParent(canvasRt, false);
+        StretchFull(rt);
+        go.transform.SetAsLastSibling();
+        _damageNumbersHost = rt;
+    }
+
+    /// <summary>Full-screen overlay parent for pooled world-anchored damage text (above most HUD widgets).</summary>
+    public RectTransform DamageNumbersHost => _damageNumbersHost;
+
+    /// <summary>Same font as HUD stat labels for floating combat numbers.</summary>
+    public static Font HudUiFont => UiFont;
 
     public void RefreshGameplay(
         bool showGameplay,
