@@ -12,7 +12,7 @@ Unity **6** project (**6000.4.5f1**). A third-person style **survival / horde** 
 
 Main scenes (under `Assets/_SCENES/`):
 
-- **`Start.unity`** — Press **G** to load the main scene (`GameStart`).
+- **`Start.unity`** — Title screen (**GeoWorld** / “Press any key to start”); `GameStart` loads **`GeoWorldMain`** on the first key or mouse button (see `Assets/_SCENES/GameStart.cs`). **Editor:** Unity’s Play button normally runs the **scene you have open**; this repo sets **`Start.unity`** as the default **Play Mode Start Scene** on domain reload (`Assets/Editor/GeoWorldPlayModeStartScene.cs`) so you still see the title flow while working on other scenes. To change that: **GeoWorld → Play Mode → Use currently open scene when pressing Play** (or **Project Settings → Editor → Play Mode** and assign another scene).
 - **`GeoWorldMain.unity`** — Primary gameplay scene.
 
 ## Gameplay systems (high level)
@@ -106,7 +106,7 @@ This section is the checklist for a **browser** build: loading, audio policy, fu
 | Topic | What we do |
 |--------|----------------|
 | **Tab focus / visibility** | `WebGlShipReadyRuntime` (WebGL player only) sets `AudioListener.pause` from `OnApplicationPause` when the tab loses or regains focus. Gameplay **time scale is unchanged** (avoids fighting `GameOver`, which sets `Time.timeScale` to 0 at end of round). To also pause simulation when hidden, you would add a small component that toggles `Time.timeScale` only while the round is active—**not** done by default. |
-| **Background music & autoplay** | Browsers block **autoplay with sound** until a **user gesture**. On WebGL **player** builds, `BackgroundMusic` assigns the clip in `Start` but calls `Play()` only after the first **key** or **mouse button** press (`Update`). One successful start unlocks the audio context for typical SFX on the same page. |
+| **Background music & autoplay** | Browsers block **autoplay with sound** until a **user gesture**. If the player came from **`Start.unity`**, `GameStart` calls `GeoWorldSessionStart.NotifyGameplayStartingFromTitleScreen()` before loading **`GeoWorldMain`**, and `BackgroundMusic` tries `Play()` on the first gameplay frame, then falls back to “wait for key/mouse” if the clip still is not playing. If the first scene is **`GeoWorldMain`** (no title), `BackgroundMusic` still waits for the first **key** or **mouse button** in `Update`. |
 | **Quit** | `GameOver` does **not** call `Application.Quit()` on WebGL; escape still exits play mode in the Editor. Standalone keeps `Application.Quit()`. |
 | **Input** | WebGL **player** builds use **legacy `Input` only** in `GameInput` to avoid WASM/JS re-entrancy with the new Input System (see **Tuning & configuration**). |
 
@@ -211,7 +211,7 @@ The workflow uses `unityVersion: auto` (reads `ProjectSettings/ProjectVersion.tx
 
 ## Contributing / picking it back up
 
-1. Open **`GeoWorldMain`** from `Assets/_SCENES` (or run from **`Start`** and press **G**).  
+1. Open **`GeoWorldMain`** from `Assets/_SCENES` (or run from **`Start`** and confirm the title screen with any key or mouse click).  
 2. Optional: create a **`Game Balance`** asset and assign it on **`GameOver`** so round length and spawn rules are editable without code changes (see **Tuning & configuration**).  
 3. Prefer fixing gameplay in **`Assets/_SCRIPTS`**; treat **`Standard Assets`** as legacy third-party code unless you plan a full replacement.  
 4. After big Unity upgrades, expect more obsolete API warnings in **Standard Assets**; the custom game scripts are the source of truth for design intent.

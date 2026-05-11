@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System.Collections;
+using UnityEngine;
 
 /// <summary>
 /// Loops background music on the same GameObject as <see cref="AudioSource"/>.
@@ -34,13 +35,32 @@ public class BackgroundMusic : GameOver
         {
             a.clip = clipToPlay;
 #if UNITY_WEBGL && !UNITY_EDITOR
-            // Browser autoplay policy: start only after a user gesture (see README).
-            m_WaitingForFirstGesture = true;
+            // Title screen already captured a gesture → try Play immediately; verify next frame (README).
+            if (GeoWorldSessionStart.TitleScreenProvidedUserGestureForAudio)
+            {
+                GeoWorldSessionStart.ConsumeTitleScreenGestureForAudio();
+                a.Play();
+                m_WaitingForFirstGesture = false;
+                StartCoroutine(VerifyWebGlBgmPlayingAfterFrame());
+            }
+            else
+            {
+                m_WaitingForFirstGesture = true;
+            }
 #else
             a.Play();
 #endif
         }
     }
+
+#if UNITY_WEBGL && !UNITY_EDITOR
+    IEnumerator VerifyWebGlBgmPlayingAfterFrame()
+    {
+        yield return null;
+        if (a != null && a.clip != null && !playerDied && !gameTimeIsOver && !a.isPlaying)
+            m_WaitingForFirstGesture = true;
+    }
+#endif
 
     AudioClip PickTrack()
     {
