@@ -97,7 +97,82 @@ These reflect how the game was built historically—not necessarily current Unit
 
 Do **not** set the build output to the project root. Use a subfolder, e.g. `Builds/Windows` or `Builds/WebGL`.
 
+## WebGL: ship-ready behavior and hosting
+
+This section is the checklist for a **browser** build: loading, audio policy, fullscreen, hosting headers, and differences from desktop.
+
+### Behavior implemented in this project
+
+| Topic | What we do |
+|--------|----------------|
+| **Tab focus / visibility** | `WebGlShipReadyRuntime` (WebGL player only) sets `AudioListener.pause` from `OnApplicationPause` when the tab loses or regains focus. Gameplay **time scale is unchanged** (avoids fighting `GameOver`, which sets `Time.timeScale` to 0 at end of round). To also pause simulation when hidden, you would add a small component that toggles `Time.timeScale` only while the round is active—**not** done by default. |
+| **Background music & autoplay** | Browsers block **autoplay with sound** until a **user gesture**. On WebGL **player** builds, `BackgroundMusic` assigns the clip in `Start` but calls `Play()` only after the first **key** or **mouse button** press (`Update`). One successful start unlocks the audio context for typical SFX on the same page. |
+| **Quit** | `GameOver` does **not** call `Application.Quit()` on WebGL; escape still exits play mode in the Editor. Standalone keeps `Application.Quit()`. |
+| **Input** | WebGL **player** builds use **legacy `Input` only** in `GameInput` to avoid WASM/JS re-entrancy with the new Input System (see **Tuning & configuration**). |
+
+### Fullscreen API (Unity template)
+
+Fullscreen is provided by the **Unity WebGL player template** (fullscreen control in the page chrome), which uses the browser **Fullscreen API** where supported.
+
+**Limitations (expect these in the wild):**
+
+- **iOS Safari** and some mobile browsers **do not** support true keyboard/mouse-lock fullscreen the same way as desktop Chrome/Firefox; the control may be missing or may only expand the canvas inside the page.
+- The user can **exit** fullscreen with **Esc** (desktop); do not assume the game always stays fullscreen.
+- **Embedded iframes** (e.g. some storefront embeds) may block fullscreen unless the host sets **`allowfullscreen`** (and related permissions). Test on the real embed URL.
+- Programmatic **`Screen.SetResolution` / `Screen.fullScreen`** from C# may be ignored or gated; prefer the template’s user-initiated fullscreen where possible.
+
+### Loading UX (progress, first frame)
+
+- Unity’s default template shows **download / decompress progress** while the `.data` / `.wasm` payload loads.
+- The **first rendered frame** may arrive a few seconds after the progress bar completes; hosts with aggressive caching still need correct **`Content-Type`** and **`Content-Encoding`** for `.wasm` / `.js` / `.data` (see `netlify.toml` in this repo).
+- If you enable **Brotli** or **Gzip** compression in **Player Settings → Publishing Settings**, ensure the host serves **precompressed** files **with** matching `Content-Encoding`, or enable **Decompression Fallback** so the loader can decompress in the client when headers are wrong.
+
+### Audio: compression and import settings (Editor)
+
+- Prefer **Vorbis** (or platform-default compressed) for music and most SFX; tune **quality** vs. download size. Very short UI blips can stay **PCM** or **ADPCM** if you want zero decode latency.
+- Long loops: consider **Load Type = Streaming** and **Load In Background** where appropriate to reduce peak memory (see Unity’s AudioClip import docs).
+- **Mute when tab in background** is handled via **`AudioListener.pause`** (see table above), not by stopping every `AudioSource` individually.
+
+### Desktop vs WebGL assumptions (acceptance checklist)
+
+| Avoid on WebGL | Status in this repo |
+|----------------|---------------------|
+| `Application.Quit()` as the only way to “exit” | Handled in `GameOver` (WebGL shows copy to close the tab). |
+| **Blocking** the main thread (`Thread.Sleep`, synchronous network/file waits in `Update`) | Custom `_SCRIPTS` do not use `Thread` / `Task` patterns; keep new code off blocking I/O on the main thread in WebGL. |
+| **Background threads** doing Unity API calls | Not used; **Player Settings → WebGL → Threads** should stay **off** unless you deliberately adopt multithreaded WebGL and matching hosting (COOP/COEP). |
+
+### Hosting checklist
+
+**Compression & MIME**
+
+- Serve **`.wasm`** as `application/wasm`.
+- If files are **`.br` / `.gz`**, set **`Content-Encoding: br`** or **`gzip`** respectively (see `netlify.toml`).
+- Mismatch between actual bytes and headers is a common **“stuck loading”** failure mode; **Decompression Fallback** in the player is the safety net.
+
+**COOP / COEP (cross-origin isolation)**
+
+- Required only for **multithreaded WebGL** (and some advanced browser APIs). **This project does not enable COOP/COEP by default**; see the commented block in `netlify.toml`. **Do not** turn on isolation headers unless **Player Settings** use threads and Unity’s hosting notes say you need them—otherwise third-party scripts or assets can break.
+
+**itch.io (HTML / WebGL uploads)**
+
+- Upload a **zip** of the **contents** of your build folder so **`index.html` is at the root** of the zip (same idea as Netlify publish root).
+- Respect **file size** and **iframe** limits documented on itch; large `.data` builds may need stronger compression or a split strategy per Unity/itch guidance.
+- Ensure the itch page allows **fullscreen** if you rely on it.
+
+**Tested host (CI)**
+
+- **Netlify** static deploy from GitHub Actions (see below): publish directory **`Build/WebGL/GeoWorld/`** with the headers in `netlify.toml`.
+
+### WebGL build & upload (quick path)
+
+1. **Unity Editor:** *File → Build Profiles* (or *Build Settings*), switch to **WebGL**, then **Build** into a clean folder (e.g. `Builds/WebGL/GeoWorld/`). Do **not** use the repository root as the output path.
+2. **Publishing:** enable **compression** (Brotli/Gzip) consistent with your host; enable **Decompression Fallback** if you are unsure about CDN headers.
+3. **Upload:** upload the **folder that contains `index.html`** at its root (for Netlify CLI: `--dir=Build/WebGL/GeoWorld`; for itch: zip those files).
+4. **Smoke-test:** first load, **click or press a key** to confirm music (autoplay policy), then **tab away** and back to confirm audio mutes/resumes.
+
 ## WebGL CI and Netlify
+
+Player-facing WebGL behavior (tab mute, autoplay, fullscreen limits, hosting) is documented in **WebGL: ship-ready behavior and hosting** above.
 
 GitHub Actions builds **WebGL** with [game-ci `unity-builder`](https://game.ci/docs/github/builder) and deploys the static output to [Netlify](https://www.netlify.com/) on:
 

@@ -17,6 +17,10 @@ public class BackgroundMusic : GameOver
 
     AudioSource a;
 
+#if UNITY_WEBGL && !UNITY_EDITOR
+    bool m_WaitingForFirstGesture;
+#endif
+
     void Start()
     {
         a = GetComponent<AudioSource>();
@@ -29,7 +33,12 @@ public class BackgroundMusic : GameOver
         if (clipToPlay != null)
         {
             a.clip = clipToPlay;
+#if UNITY_WEBGL && !UNITY_EDITOR
+            // Browser autoplay policy: start only after a user gesture (see README).
+            m_WaitingForFirstGesture = true;
+#else
             a.Play();
+#endif
         }
     }
 
@@ -51,6 +60,19 @@ public class BackgroundMusic : GameOver
     void Update()
     {
         if (a == null) return;
+
+#if UNITY_WEBGL && !UNITY_EDITOR
+        if (m_WaitingForFirstGesture)
+        {
+            if (UnityEngine.Input.anyKeyDown || UnityEngine.Input.GetMouseButtonDown(0) ||
+                UnityEngine.Input.GetMouseButtonDown(1))
+            {
+                a.Play();
+                m_WaitingForFirstGesture = false;
+            }
+        }
+#endif
+
         if (playerDied || gameTimeIsOver)
             a.Stop();
     }
