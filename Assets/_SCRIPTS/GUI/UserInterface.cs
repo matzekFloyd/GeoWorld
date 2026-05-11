@@ -67,6 +67,8 @@ public class UserInterface : MonoBehaviour
         _hud = GetComponent<GameplayHudView>();
         if (_hud == null)
             _hud = gameObject.AddComponent<GameplayHudView>();
+        if (GetComponent<CombatFeedback>() == null)
+            gameObject.AddComponent<CombatFeedback>();
     }
 
     void Start()

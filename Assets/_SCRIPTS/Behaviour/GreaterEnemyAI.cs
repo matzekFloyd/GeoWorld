@@ -155,13 +155,18 @@ public class GreaterEnemyAI : MonoBehaviour {
 
     }
 
-    public void getDamaged(float damage)
+    public void getDamaged(float damage, Vector3? hitOrigin = null, CombatHitSeverity severity = CombatHitSeverity.Light)
     {
+        damagedTimer = 0.2f;
+        damagedFinished = false;
         this.gameObject.GetComponent<Renderer>().material.color = Color.red;
 
         this.gameObject.GetComponent<EnemyCharacter>().curHealth -= damage;
         state = State.Damaged;
 
+        var fx = CombatFeedback.Instance;
+        if (fx != null)
+            fx.NotifyEnemyHit(transform, damage, hitOrigin, severity);
     }
 
     private void damaged()

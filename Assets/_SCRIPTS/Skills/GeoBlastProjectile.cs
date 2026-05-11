@@ -60,7 +60,7 @@ public class GeoBlastProjectile : GeoBlast
 
         if (something.gameObject.tag == "Enemy" && geoManiaActivated())
         {
-            something.gameObject.GetComponent<EnemyAI>().getDamaged(_ownerGeoBlast.getGeoBlastDmg());
+            something.gameObject.GetComponent<EnemyAI>().getDamaged(_ownerGeoBlast.getGeoBlastDmg(), transform.position, CombatHitSeverity.Light);
             _hit = true;
             if (_lifetimeRoutine != null)
             {
@@ -72,7 +72,7 @@ public class GeoBlastProjectile : GeoBlast
         }
         else if (something.gameObject.tag == "Enemy")
         {
-            something.gameObject.GetComponent<EnemyAI>().getDamaged(_ownerGeoBlast.getGeoBlastDmg());
+            something.gameObject.GetComponent<EnemyAI>().getDamaged(_ownerGeoBlast.getGeoBlastDmg(), transform.position, CombatHitSeverity.Light);
             _hit = true;
             if (_lifetimeRoutine != null)
             {

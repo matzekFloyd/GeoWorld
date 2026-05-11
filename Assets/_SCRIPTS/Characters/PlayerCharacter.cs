@@ -27,6 +27,17 @@ public class PlayerCharacter : BaseCharacter {
         setInitialPlayerStatistics();
     }
 
+    /// <summary>Enemy/missile damage with world origin for directional HUD feedback.</summary>
+    public void ApplyIncomingDamage(float amount, Vector3 worldSource, bool hasWorldSource, CombatHitSeverity severity)
+    {
+        if (amount <= 0f)
+            return;
+        ApplyHealthChange(-Mathf.Abs(amount));
+        var fx = CombatFeedback.Instance;
+        if (fx != null)
+            fx.NotifyPlayerDamaged(amount, worldSource, hasWorldSource, severity);
+    }
+
     private void setInitialPlayerStatistics()
     {
         curExp = 0;
