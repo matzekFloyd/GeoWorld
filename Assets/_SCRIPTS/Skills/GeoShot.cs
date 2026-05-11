@@ -46,7 +46,10 @@ public class GeoShot : SkillBasic
     {
         m_Player.curMana -= manacost;
 
-        GameObject shot = (GameObject)Instantiate(geoShotProjectile, camPos.position + camPos.forward * 5, camPos.rotation);
+        var pools = GeoWorldObjectPools.Instance;
+        GameObject shot = pools != null
+            ? pools.Acquire(geoShotProjectile, camPos.position + camPos.forward * 5, camPos.rotation, null)
+            : Instantiate(geoShotProjectile, camPos.position + camPos.forward * 5, camPos.rotation);
         shot.GetComponent<Rigidbody>().AddForce(camPos.forward * 10, ForceMode.Impulse);
     }
 
@@ -55,9 +58,12 @@ public class GeoShot : SkillBasic
         int randomValue = Random.Range(1, 5);
         m_Player.curMana -= manacost;
 
+        var pools = GeoWorldObjectPools.Instance;
         for(int i = 0; i <= randomValue; i++)
         {
-            GameObject shot = (GameObject)Instantiate(geoShotProjectile, camPos.position + camPos.forward * 5 * 5 * i, camPos.rotation);
+            GameObject shot = pools != null
+                ? pools.Acquire(geoShotProjectile, camPos.position + camPos.forward * 5 * 5 * i, camPos.rotation, null)
+                : Instantiate(geoShotProjectile, camPos.position + camPos.forward * 5 * 5 * i, camPos.rotation);
             shot.GetComponent<Rigidbody>().AddForce(camPos.forward * 10f, ForceMode.Impulse);
         }
     }

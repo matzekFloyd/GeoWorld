@@ -42,6 +42,7 @@ public class GeoBlast : SkillBasic
     {
         m_Player.curMana -= manacost;
 
+        var pools = GeoWorldObjectPools.Instance;
         for(int i = 0; i <= projectileCount; i++)
         {
             double spread = Random.Range(0.1f,2);
@@ -56,7 +57,9 @@ public class GeoBlast : SkillBasic
             var shotDirectionNormalized = shotDirection.normalized;
             var shotSpawnPosition = shotPosition + (-shotDirectionNormalized * 13);
 
-            GameObject shot = (GameObject)Instantiate(geoBlastProjectile, shotSpawnPosition, camPos.rotation);
+            GameObject shot = pools != null
+                ? pools.Acquire(geoBlastProjectile, shotSpawnPosition, camPos.rotation, null)
+                : Instantiate(geoBlastProjectile, shotSpawnPosition, camPos.rotation);
 
             shot.GetComponent<Rigidbody>().AddForce(shotDirectionNormalized * shotspeed, ForceMode.Impulse);
         }

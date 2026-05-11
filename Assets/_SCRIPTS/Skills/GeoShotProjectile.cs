@@ -1,5 +1,5 @@
-﻿using UnityEngine;
-using System.Collections;
+﻿using System.Collections;
+using UnityEngine;
 
 public class GeoShotProjectile : GeoShot{
 
@@ -9,14 +9,47 @@ public class GeoShotProjectile : GeoShot{
 
     GeoShot _ownerGeoShot;
     PlayerCharacter _ownerPlayer;
+    bool _hit;
+    Coroutine _lifetimeRoutine;
 
-    void Start () {
-        Destroy(this.gameObject, 2);
+    void OnEnable()
+    {
+        _hit = false;
+        if (_lifetimeRoutine != null)
+        {
+            StopCoroutine(_lifetimeRoutine);
+            _lifetimeRoutine = null;
+        }
+        _lifetimeRoutine = StartCoroutine(LifetimeThenRelease(2f));
         if (player != null)
         {
             _ownerGeoShot = player.GetComponent<GeoShot>();
             _ownerPlayer = player.GetComponent<PlayerCharacter>();
         }
+    }
+
+    void OnDisable()
+    {
+        if (_lifetimeRoutine != null)
+        {
+            StopCoroutine(_lifetimeRoutine);
+            _lifetimeRoutine = null;
+        }
+    }
+
+    IEnumerator LifetimeThenRelease(float seconds)
+    {
+        yield return new WaitForSeconds(seconds);
+        _lifetimeRoutine = null;
+        Despawn();
+    }
+
+    void Despawn()
+    {
+        if (_hit)
+            return;
+        _hit = true;
+        GeoWorldObjectPools.Release(gameObject);
     }
 
     void Update () {
@@ -29,13 +62,19 @@ public class GeoShotProjectile : GeoShot{
 
     void OnCollisionEnter(Collision something)
     {
-        if (_ownerPlayer == null)
+        if (_hit || _ownerPlayer == null)
             return;
 
         if (something.gameObject.tag == "Enemy" && geoManiaActivated())
         {
             something.gameObject.GetComponent<EnemyAI>().getDamaged(damagePerHit);
-            Destroy(this.gameObject);
+            _hit = true;
+            if (_lifetimeRoutine != null)
+            {
+                StopCoroutine(_lifetimeRoutine);
+                _lifetimeRoutine = null;
+            }
+            GeoWorldObjectPools.Release(gameObject);
 
             _ownerPlayer.changeCurrentHealth(lifestealPerHit);
             _ownerPlayer.changeCurrentMana(manaGainPerHit);
@@ -44,7 +83,13 @@ public class GeoShotProjectile : GeoShot{
         else if (something.gameObject.tag == "Enemy")
         {
             something.gameObject.GetComponent<EnemyAI>().getDamaged(damagePerHit);
-            Destroy(this.gameObject);
+            _hit = true;
+            if (_lifetimeRoutine != null)
+            {
+                StopCoroutine(_lifetimeRoutine);
+                _lifetimeRoutine = null;
+            }
+            GeoWorldObjectPools.Release(gameObject);
         }
     }
 

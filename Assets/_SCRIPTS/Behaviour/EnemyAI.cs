@@ -34,9 +34,21 @@ public class EnemyAI : MonoBehaviour {
     protected float freezeTimer;
     protected bool freezeFinished;
 
-    // Use this for initialization
-    void Start() {
+    EnemyCharacter m_EnemyCharacter;
 
+    void EnsureEnemyCharacter()
+    {
+        if (m_EnemyCharacter != null)
+            return;
+        m_EnemyCharacter = GetComponent<EnemyCharacter>()
+            ?? GetComponentInParent<EnemyCharacter>()
+            ?? GetComponentInChildren<EnemyCharacter>(true);
+    }
+
+    void OnEnable()
+    {
+        m_EnemyCharacter = null;
+        EnsureEnemyCharacter();
         state = State.Spawn;
         target = GameObject.FindGameObjectWithTag("Player1");
         enemyGenerator = GameObject.FindGameObjectWithTag("Spawn");
@@ -47,10 +59,17 @@ public class EnemyAI : MonoBehaviour {
 
         attackTimer = 0;
         coolDown = Random.Range(1.5f, 3f);
+        spawnFinished = false;
+        damagedFinished = false;
+        freezeFinished = false;
     }
         
     // Update is called once per frame
     void Update() {
+
+        EnsureEnemyCharacter();
+        if (m_EnemyCharacter == null)
+            return;
 
         calculateAttackCooldown();
         calculateSpawnCooldown();
@@ -81,7 +100,7 @@ public class EnemyAI : MonoBehaviour {
                 die();
                 break;
         }
-        if(this.GetComponentInParent<EnemyCharacter>().curHealth <= 0)
+        if (m_EnemyCharacter.curHealth <= 0)
         {
             state = State.Die;
         }
@@ -223,10 +242,13 @@ public class EnemyAI : MonoBehaviour {
 
     public void getDamaged(float damage)
     {
+        EnsureEnemyCharacter();
+        if (m_EnemyCharacter == null)
+            return;
         damagedTimer = 0.2f;
         this.gameObject.GetComponent<Renderer>().material.color = Color.red;
 
-        this.gameObject.GetComponent<EnemyCharacter>().curHealth -= damage;
+        m_EnemyCharacter.curHealth -= damage;
         state = State.Damaged;
     }
 
@@ -240,13 +262,18 @@ public class EnemyAI : MonoBehaviour {
 
     private void undamaged()
     {
-        this.GetComponent<Renderer>().material.color = this.gameObject.GetComponent<EnemyCharacter>().originalColor + Color.red* calculateRedMultiplier();
+        EnsureEnemyCharacter();
+        if (m_EnemyCharacter == null)
+            return;
+        this.GetComponent<Renderer>().material.color = m_EnemyCharacter.originalColor + Color.red* calculateRedMultiplier();
         state = State.Idle;
     }
 
     private float calculateRedMultiplier()
     {
-        return 1 - this.gameObject.GetComponent<EnemyCharacter>().curHealth / this.gameObject.GetComponent<EnemyCharacter>().maxHealth;
+        if (m_EnemyCharacter == null)
+            return 0f;
+        return 1 - m_EnemyCharacter.curHealth / m_EnemyCharacter.maxHealth;
     }
 
     public void freeze(float duration)
@@ -276,7 +303,9 @@ public class EnemyAI : MonoBehaviour {
     private void unfreeze()
     {
         this.gameObject.GetComponent<Rigidbody>().constraints = RigidbodyConstraints.None;
-        this.GetComponent<Renderer>().material.color = this.gameObject.GetComponent<EnemyCharacter>().originalColor;
+        EnsureEnemyCharacter();
+        if (m_EnemyCharacter != null)
+            this.GetComponent<Renderer>().material.color = m_EnemyCharacter.originalColor;
 
         state = State.Idle;
     }
@@ -307,7 +336,17 @@ public class EnemyAI : MonoBehaviour {
         enemyGenerator.GetComponent<EnemyGenerator>().targets.Remove(this.transform);
         target.GetComponent<FreezeTime>().enemiesToFreeze.Remove(this.gameObject);
 
-        EnemyCharacter ec = this.gameObject.GetComponent<EnemyCharacter>();
+        EnsureEnemyCharacter();
+        EnemyCharacter ec = m_EnemyCharacter;
+        if (ec == null)
+        {
+            var pooledOnly = GetComponent<PooledObject>();
+            if (pooledOnly != null && pooledOnly.IsManaged)
+                pooledOnly.ReleaseToPool();
+            else
+                Destroy(gameObject, 0);
+            return;
+        }
         float gainedExp = ec.getExpOnKill();
         target.GetComponent<PlayerCharacter>().AddExp(gainedExp);
 
@@ -316,7 +355,11 @@ public class EnemyAI : MonoBehaviour {
         if (ec != null && ec.isBoss)
             go.greaterEnemyKillCounter += 1 + GameBalanceHelper.BossGreaterKillCounterBonus;
 
-        Destroy(this.gameObject, 0);
+        var pooled = GetComponent<PooledObject>();
+        if (pooled != null && pooled.IsManaged)
+            pooled.ReleaseToPool();
+        else
+            Destroy(this.gameObject, 0);
 
     }
 }

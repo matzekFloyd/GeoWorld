@@ -1,5 +1,5 @@
-﻿using UnityEngine;
-using System.Collections;
+﻿using System.Collections;
+using UnityEngine;
 
 public class HomingMissileAI : MonoBehaviour {
 
@@ -11,22 +11,46 @@ public class HomingMissileAI : MonoBehaviour {
     public float smallMissileDmg;
     public float bigMissileDmg;
 
-    // Use this for initialization
-    void Start () {
+    Coroutine _lifetimeRoutine;
+
+    void OnEnable () {
         target = GameObject.FindGameObjectWithTag("Player1");
 
         dmgDistance = 5;
 
-        Destroy(this.gameObject, 7.5f);
-
         moveSpeed = 50;
         rotationSpeed = 10;
+
+        if (_lifetimeRoutine != null)
+            StopCoroutine(_lifetimeRoutine);
+        _lifetimeRoutine = StartCoroutine(LifetimeThenRelease(7.5f));
+    }
+
+    void OnDisable()
+    {
+        if (_lifetimeRoutine != null)
+        {
+            StopCoroutine(_lifetimeRoutine);
+            _lifetimeRoutine = null;
+        }
+    }
+
+    IEnumerator LifetimeThenRelease(float seconds)
+    {
+        yield return new WaitForSeconds(seconds);
+        _lifetimeRoutine = null;
+        GeoWorldObjectPools.Release(gameObject);
     }
 
     // Update is called once per frame
     void Update () {
-        smallMissileDmg = target.GetComponent<PlayerCharacter>().getCurLevel() * 30;
-        bigMissileDmg = target.GetComponent<PlayerCharacter>().getCurLevel() * 100;
+        if (target == null)
+            return;
+        var pc = target.GetComponent<PlayerCharacter>();
+        if (pc == null)
+            return;
+        smallMissileDmg = pc.getCurLevel() * 30;
+        bigMissileDmg = pc.getCurLevel() * 100;
         charge();
     }
 
@@ -45,13 +69,23 @@ public class HomingMissileAI : MonoBehaviour {
             {
                 if (this.gameObject.tag == "SmallHomingMissile") target.GetComponent<PlayerCharacter>().changeCurrentHealth(-smallMissileDmg);
                 if (this.gameObject.tag == "BigHomingMissile") target.GetComponent<PlayerCharacter>().changeCurrentHealth(-bigMissileDmg);
-                Destroy(this.gameObject);
+                if (_lifetimeRoutine != null)
+                {
+                    StopCoroutine(_lifetimeRoutine);
+                    _lifetimeRoutine = null;
+                }
+                GeoWorldObjectPools.Release(gameObject);
 
             }
 
             if (target.GetComponent<PlayerCharacter>().iAmDead())
             {
-                Destroy(this.gameObject);
+                if (_lifetimeRoutine != null)
+                {
+                    StopCoroutine(_lifetimeRoutine);
+                    _lifetimeRoutine = null;
+                }
+                GeoWorldObjectPools.Release(gameObject);
             }
         
     }
