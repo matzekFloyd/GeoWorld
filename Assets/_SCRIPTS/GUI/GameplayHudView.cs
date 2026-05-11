@@ -140,6 +140,11 @@ public sealed class GameplayHudView : MonoBehaviour
         _fxFreeze = CreateFullscreenImage(canvasRt, "FxFreeze");
 
         BuildCombatHitOverlays(canvasRt);
+
+        var minimap = GetComponent<MinimapRadar>();
+        if (minimap != null)
+            minimap.BuildUi(canvasRt);
+
         BuildDamageNumbersHost(canvasRt);
 
         _built = true;
@@ -346,8 +351,8 @@ public sealed class GameplayHudView : MonoBehaviour
         var rt = (RectTransform)go.transform;
         go.transform.SetParent(canvasRt, false);
         StretchFull(rt);
-        go.transform.SetAsLastSibling();
         _damageNumbersHost = rt;
+        go.transform.SetAsLastSibling();
     }
 
     /// <summary>Full-screen overlay parent for pooled world-anchored damage text (above most HUD widgets).</summary>
@@ -355,6 +360,9 @@ public sealed class GameplayHudView : MonoBehaviour
 
     /// <summary>Same font as HUD stat labels for floating combat numbers.</summary>
     public static Font HudUiFont => UiFont;
+
+    /// <summary>1×1 white sprite for solid uGUI fills (minimap blips, etc.).</summary>
+    public static Sprite HudSolidSprite => GetSolidWhiteSprite();
 
     public void RefreshGameplay(
         bool showGameplay,
@@ -483,6 +491,7 @@ public sealed class GameplayHudView : MonoBehaviour
 
     const float SkillColWidth = 58f;
     const float SkillColSpacing = 6f;
+    const float SkillsTitleGapAboveRow = 12f;
     /// <summary>Horizontal padding inside the skill row (must match <see cref="HorizontalLayoutGroup.padding"/>).</summary>
     const float SkillsRowHorizontalPadding = 16f;
     const float SkillsRowHeight = 244f;
@@ -727,11 +736,16 @@ public sealed class GameplayHudView : MonoBehaviour
     SkillColumn[] BuildSkillColumns(RectTransform canvas, UserInterface source, float barWidth)
     {
         _ = barWidth;
+        float bottomInset = 16f;
+        var minimap = GetComponent<MinimapRadar>();
+        if (minimap != null)
+            bottomInset = minimap.CornerInsetFromBottomLeft;
+
         var titleGo = CreateUIObject("SkillsTitle", canvas);
         var titleRt = titleGo.GetComponent<RectTransform>();
         titleRt.anchorMin = titleRt.anchorMax = new Vector2(0.5f, 0f);
         titleRt.pivot = new Vector2(0.5f, 0f);
-        titleRt.anchoredPosition = new Vector2(0f, 260f);
+        titleRt.anchoredPosition = new Vector2(0f, bottomInset + SkillsRowHeight + SkillsTitleGapAboveRow);
         titleRt.sizeDelta = new Vector2(420f, 28f);
         var title = CreateText(titleGo.transform, "Skills", 22, TextAnchor.MiddleCenter, FontStyle.Bold);
         StretchFull(title.GetComponent<RectTransform>());
@@ -749,7 +763,7 @@ public sealed class GameplayHudView : MonoBehaviour
         _skillRowRoot = row.transform;
         _skillsRowRt.anchorMin = _skillsRowRt.anchorMax = new Vector2(0.5f, 0f);
         _skillsRowRt.pivot = new Vector2(0.5f, 0f);
-        _skillsRowRt.anchoredPosition = new Vector2(0f, 2f);
+        _skillsRowRt.anchoredPosition = new Vector2(0f, bottomInset);
         UpdateSkillsRowWidth(8);
 
         var h = row.AddComponent<HorizontalLayoutGroup>();
