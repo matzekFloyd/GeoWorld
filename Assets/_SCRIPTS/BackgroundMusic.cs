@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System.Collections;
+using UnityEngine;
 
 /// <summary>
 /// Loops background music on the same GameObject as <see cref="AudioSource"/>.
@@ -17,6 +18,10 @@ public class BackgroundMusic : GameOver
 
     AudioSource a;
 
+#if UNITY_WEBGL && !UNITY_EDITOR
+    bool m_WaitingForFirstGesture;
+#endif
+
     void Start()
     {
         a = GetComponent<AudioSource>();
@@ -29,9 +34,33 @@ public class BackgroundMusic : GameOver
         if (clipToPlay != null)
         {
             a.clip = clipToPlay;
+#if UNITY_WEBGL && !UNITY_EDITOR
+            // Title screen already captured a gesture → try Play immediately; verify next frame (README).
+            if (GeoWorldSessionStart.TitleScreenProvidedUserGestureForAudio)
+            {
+                GeoWorldSessionStart.ConsumeTitleScreenGestureForAudio();
+                a.Play();
+                m_WaitingForFirstGesture = false;
+                StartCoroutine(VerifyWebGlBgmPlayingAfterFrame());
+            }
+            else
+            {
+                m_WaitingForFirstGesture = true;
+            }
+#else
             a.Play();
+#endif
         }
     }
+
+#if UNITY_WEBGL && !UNITY_EDITOR
+    IEnumerator VerifyWebGlBgmPlayingAfterFrame()
+    {
+        yield return null;
+        if (a != null && a.clip != null && !playerDied && !gameTimeIsOver && !a.isPlaying)
+            m_WaitingForFirstGesture = true;
+    }
+#endif
 
     AudioClip PickTrack()
     {
@@ -51,6 +80,19 @@ public class BackgroundMusic : GameOver
     void Update()
     {
         if (a == null) return;
+
+#if UNITY_WEBGL && !UNITY_EDITOR
+        if (m_WaitingForFirstGesture)
+        {
+            if (UnityEngine.Input.anyKeyDown || UnityEngine.Input.GetMouseButtonDown(0) ||
+                UnityEngine.Input.GetMouseButtonDown(1))
+            {
+                a.Play();
+                m_WaitingForFirstGesture = false;
+            }
+        }
+#endif
+
         if (playerDied || gameTimeIsOver)
             a.Stop();
     }
