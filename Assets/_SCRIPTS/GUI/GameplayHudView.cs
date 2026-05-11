@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Globalization;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -42,6 +43,11 @@ public sealed class GameplayHudView : MonoBehaviour
     static readonly Dictionary<Texture2D, Sprite> SpriteCache = new Dictionary<Texture2D, Sprite>();
 
     SkillColumn[] _columns;
+    RectTransform _skillsRowRt;
+    Transform _skillRowRoot;
+    Transform _skillsHiddenBucket;
+    int _lastSkillVisibleCount = -1;
+    int _skillStripLayoutMask = -1;
     bool _built;
 
     int _lastBloodTier = -1;
@@ -55,8 +61,6 @@ public sealed class GameplayHudView : MonoBehaviour
     readonly string[] _lastSkillMana = new string[8];
     readonly string[] _lastSkillDmg = new string[8];
     readonly string[] _lastSkillHeal = new string[8];
-    readonly string[] _lastSkillCdMax = new string[8];
-    readonly string[] _lastSkillCdCur = new string[8];
     readonly string[] _lastSkillKey = new string[8];
     readonly bool[] _lastSkillColVisible = new bool[8];
 
@@ -65,12 +69,12 @@ public sealed class GameplayHudView : MonoBehaviour
         public GameObject Root;
         public Text KeyLabel;
         public Image Icon;
+        public Image CdOverlay;
         public Image Frame;
         public Text Mana;
         public Text Damage;
         public Text Heal;
-        public Text CdMax;
-        public Text CdCur;
+        public Text CdSecondsOnIcon;
     }
 
     void Awake()
@@ -111,6 +115,7 @@ public sealed class GameplayHudView : MonoBehaviour
         root.AddComponent<GraphicRaycaster>();
 
         var canvasRt = root.transform as RectTransform;
+        StretchFull(canvasRt);
         float barW = 465f;
 
         BuildTopLeftPanel(canvasRt, barW, out _classTitleText, out _levelText,
@@ -141,8 +146,6 @@ public sealed class GameplayHudView : MonoBehaviour
             _lastSkillMana[i] = null;
             _lastSkillDmg[i] = null;
             _lastSkillHeal[i] = null;
-            _lastSkillCdMax[i] = null;
-            _lastSkillCdCur[i] = null;
             _lastSkillKey[i] = null;
             _lastSkillColVisible[i] = false;
         }
@@ -320,16 +323,11 @@ public sealed class GameplayHudView : MonoBehaviour
         }
         ApplyBloodVignette(bTier, blood1, blood2, blood3);
 
+        LayoutSkillStrip(curLevel);
+
         for (int i = 0; i < 8 && _columns != null; i++)
         {
-            bool vis = curLevel >= SkillMinLevels[i];
-            if (vis != _lastSkillColVisible[i])
-            {
-                _lastSkillColVisible[i] = vis;
-                if (_columns[i].Root != null)
-                    _columns[i].Root.SetActive(vis);
-            }
-            if (!vis)
+            if (curLevel < SkillMinLevels[i])
                 continue;
 
             string k = keyLabels != null && i < keyLabels.Length ? keyLabels[i] ?? "" : "";
@@ -343,9 +341,143 @@ public sealed class GameplayHudView : MonoBehaviour
             SetIfChanged(_columns[i].Mana, mana[i], _lastSkillMana, i);
             SetIfChanged(_columns[i].Damage, dmg[i], _lastSkillDmg, i);
             SetIfChanged(_columns[i].Heal, heal[i], _lastSkillHeal, i);
-            SetIfChanged(_columns[i].CdMax, cdMax[i], _lastSkillCdMax, i);
-            SetIfChanged(_columns[i].CdCur, cdCur[i], _lastSkillCdCur, i);
+
+            ApplySkillCooldownVisual(_columns[i], cdCur[i], cdMax[i]);
         }
+    }
+
+    const float SkillColWidth = 58f;
+    const float SkillColSpacing = 6f;
+    /// <summary>Horizontal padding inside the skill row (must match <see cref="HorizontalLayoutGroup.padding"/>).</summary>
+    const float SkillsRowHorizontalPadding = 16f;
+    const float SkillsRowHeight = 244f;
+
+    void LayoutSkillStrip(int curLevel)
+    {
+        if (_columns == null || _skillRowRoot == null || _skillsHiddenBucket == null)
+            return;
+
+        int mask = 0;
+        for (int i = 0; i < 8; i++)
+        {
+            if (curLevel >= SkillMinLevels[i])
+                mask |= 1 << i;
+        }
+
+        if (mask == _skillStripLayoutMask)
+            return;
+        _skillStripLayoutMask = mask;
+
+        int visibleCount = 0;
+        for (int i = 0; i < 8; i++)
+        {
+            bool vis = curLevel >= SkillMinLevels[i];
+            _lastSkillColVisible[i] = vis;
+            var root = _columns[i].Root;
+            if (root == null)
+                continue;
+            if (vis)
+            {
+                root.transform.SetParent(_skillRowRoot, false);
+                root.SetActive(true);
+                visibleCount++;
+            }
+            else
+            {
+                root.transform.SetParent(_skillsHiddenBucket, false);
+                root.SetActive(false);
+            }
+        }
+
+        int order = 0;
+        for (int i = 0; i < 8; i++)
+        {
+            if (curLevel < SkillMinLevels[i])
+                continue;
+            if (_columns[i].Root != null)
+                _columns[i].Root.transform.SetSiblingIndex(order++);
+        }
+
+        _lastSkillVisibleCount = visibleCount;
+        UpdateSkillsRowWidth(visibleCount);
+    }
+
+    void UpdateSkillsRowWidth(int visibleCount)
+    {
+        if (_skillsRowRt == null)
+            return;
+        float w = visibleCount > 0
+            ? SkillsRowHorizontalPadding + visibleCount * SkillColWidth + Mathf.Max(0, visibleCount - 1) * SkillColSpacing
+            : 72f;
+        _skillsRowRt.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, w);
+        _skillsRowRt.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, SkillsRowHeight);
+    }
+
+    static void ApplySkillCooldownVisual(SkillColumn col, string cdCurStr, string cdMaxStr)
+    {
+        if (col.Icon == null)
+            return;
+
+        bool hasCd = TryParseCooldown(cdCurStr, cdMaxStr, out float curCd, out float maxCd);
+        bool onCd = hasCd && curCd > 0.02f;
+
+        col.Icon.color = onCd ? new Color(0.7f, 0.72f, 0.76f, 1f) : Color.white;
+
+        if (col.CdOverlay != null)
+        {
+            if (!onCd)
+            {
+                col.CdOverlay.fillAmount = 0f;
+                col.CdOverlay.gameObject.SetActive(false);
+            }
+            else
+            {
+                col.CdOverlay.gameObject.SetActive(true);
+                col.CdOverlay.fillAmount = Mathf.Clamp01(curCd / maxCd);
+            }
+        }
+
+        if (col.CdSecondsOnIcon != null)
+        {
+            if (!onCd)
+            {
+                col.CdSecondsOnIcon.text = "";
+                col.CdSecondsOnIcon.gameObject.SetActive(false);
+            }
+            else
+            {
+                col.CdSecondsOnIcon.gameObject.SetActive(true);
+                col.CdSecondsOnIcon.text = FormatCooldownSecondsRemaining(curCd);
+            }
+        }
+    }
+
+    static string FormatCooldownSecondsRemaining(float secondsRemaining)
+    {
+        if (secondsRemaining <= 0.02f)
+            return "";
+        if (secondsRemaining >= 99.5f)
+            return "99";
+        if (secondsRemaining >= 10f)
+            return Mathf.CeilToInt(secondsRemaining).ToString(CultureInfo.InvariantCulture);
+        return secondsRemaining.ToString("0.0", CultureInfo.InvariantCulture);
+    }
+
+    static bool TryParseCooldown(string curStr, string maxStr, out float cur, out float max)
+    {
+        cur = 0f;
+        max = 0f;
+        if (string.IsNullOrWhiteSpace(maxStr))
+            return false;
+        maxStr = maxStr.Trim().Replace(',', '.');
+        curStr = string.IsNullOrWhiteSpace(curStr) ? "0" : curStr.Trim().Replace(',', '.');
+        if (!float.TryParse(maxStr, NumberStyles.Float, CultureInfo.InvariantCulture, out max))
+            return false;
+        if (max <= 0f)
+            return false;
+        float.TryParse(curStr, NumberStyles.Float, CultureInfo.InvariantCulture, out cur);
+        cur = Mathf.Max(0f, cur);
+        return true;
     }
 
     static void SetIfChanged(Text t, string value, string[] cache, int i)
@@ -459,35 +591,41 @@ public sealed class GameplayHudView : MonoBehaviour
 
     SkillColumn[] BuildSkillColumns(RectTransform canvas, UserInterface source, float barWidth)
     {
-        var block = CreateUIObject("SkillsBlock", canvas);
-        var blockRt = block.GetComponent<RectTransform>();
-        blockRt.anchorMin = new Vector2(0f, 1f);
-        blockRt.anchorMax = new Vector2(0f, 1f);
-        blockRt.pivot = new Vector2(0f, 1f);
-        blockRt.anchoredPosition = new Vector2(14f, -236f);
-        blockRt.sizeDelta = new Vector2(barWidth + 132f, 272f);
+        _ = barWidth;
+        var titleGo = CreateUIObject("SkillsTitle", canvas);
+        var titleRt = titleGo.GetComponent<RectTransform>();
+        titleRt.anchorMin = titleRt.anchorMax = new Vector2(0.5f, 0f);
+        titleRt.pivot = new Vector2(0.5f, 0f);
+        titleRt.anchoredPosition = new Vector2(0f, 260f);
+        titleRt.sizeDelta = new Vector2(420f, 28f);
+        var title = CreateText(titleGo.transform, "Skills", 22, TextAnchor.MiddleCenter, FontStyle.Bold);
+        StretchFull(title.GetComponent<RectTransform>());
 
-        var title = CreateText(block.transform, "Skills", 22, TextAnchor.UpperLeft, FontStyle.Bold);
-        var titleRt = title.GetComponent<RectTransform>();
-        titleRt.anchorMin = new Vector2(0f, 1f);
-        titleRt.anchorMax = new Vector2(1f, 1f);
-        titleRt.pivot = new Vector2(0f, 1f);
-        titleRt.anchoredPosition = Vector2.zero;
-        titleRt.sizeDelta = new Vector2(0f, 26f);
+        var hidden = CreateUIObject("SkillsHiddenBucket", canvas);
+        var hiddenRt = hidden.GetComponent<RectTransform>();
+        hiddenRt.anchorMin = hiddenRt.anchorMax = new Vector2(0.5f, 0.5f);
+        hiddenRt.pivot = new Vector2(0.5f, 0.5f);
+        hiddenRt.anchoredPosition = new Vector2(5000f, 5000f);
+        hiddenRt.sizeDelta = new Vector2(1f, 1f);
+        _skillsHiddenBucket = hidden.transform;
 
-        var row = CreateUIObject("SkillColumns", block.transform);
-        var rowRt = row.GetComponent<RectTransform>();
-        rowRt.anchorMin = new Vector2(0f, 1f);
-        rowRt.anchorMax = new Vector2(1f, 1f);
-        rowRt.pivot = new Vector2(0f, 1f);
-        rowRt.anchoredPosition = new Vector2(0f, -30f);
-        rowRt.sizeDelta = new Vector2(0f, 236f);
+        var row = CreateUIObject("SkillColumns", canvas);
+        _skillsRowRt = row.GetComponent<RectTransform>();
+        _skillRowRoot = row.transform;
+        _skillsRowRt.anchorMin = _skillsRowRt.anchorMax = new Vector2(0.5f, 0f);
+        _skillsRowRt.pivot = new Vector2(0.5f, 0f);
+        _skillsRowRt.anchoredPosition = new Vector2(0f, 2f);
+        UpdateSkillsRowWidth(8);
+
         var h = row.AddComponent<HorizontalLayoutGroup>();
-        h.spacing = 4f;
-        h.childAlignment = TextAnchor.UpperLeft;
+        h.spacing = SkillColSpacing;
+        h.childAlignment = TextAnchor.MiddleCenter;
         h.childForceExpandWidth = false;
+        h.childControlWidth = true;
+        h.childControlHeight = true;
+        var pad = Mathf.RoundToInt(0.5f * SkillsRowHorizontalPadding);
+        h.padding = new RectOffset(pad, pad, 4, 8);
 
-        float colW = (barWidth + 8f) / 8f;
         Texture2D[] tex =
         {
             source.singleShotTexture, source.sprayShotTexture, source.geoPhysicsTexture, source.healTexture,
@@ -497,7 +635,18 @@ public sealed class GameplayHudView : MonoBehaviour
 
         var columns = new SkillColumn[8];
         for (int i = 0; i < 8; i++)
-            columns[i] = CreateSkillColumn(row.transform, "Skill" + i, colW, keys[i], tex[i], source.frameTexture, source.backgroundTexture);
+            columns[i] = CreateSkillColumn(row.transform, "Skill" + i, SkillColWidth, keys[i], tex[i], source.frameTexture, source.backgroundTexture);
+
+        var initialLv = 1;
+        var pgo = GameObject.FindGameObjectWithTag("Player1");
+        if (pgo != null)
+        {
+            var pc = pgo.GetComponent<PlayerCharacter>();
+            if (pc != null)
+                initialLv = Mathf.RoundToInt(pc.getCurLevel());
+        }
+        _columns = columns;
+        LayoutSkillStrip(initialLv);
 
         return columns;
     }
@@ -544,24 +693,59 @@ public sealed class GameplayHudView : MonoBehaviour
             fr.sprite = GetOrCreateSprite(frameTex);
         fr.raycastTarget = false;
 
+        var cdGo = CreateUIObject("CooldownSweep", iconHost.transform);
+        StretchFull(cdGo.GetComponent<RectTransform>());
+        var cdImg = cdGo.AddComponent<Image>();
+        cdImg.raycastTarget = false;
+        cdImg.color = new Color(0.04f, 0.05f, 0.08f, 0.72f);
+        cdImg.type = Image.Type.Filled;
+        cdImg.fillMethod = Image.FillMethod.Radial360;
+        cdImg.fillOrigin = (int)Image.Origin360.Top;
+        cdImg.fillClockwise = true;
+        cdImg.fillAmount = 0f;
+        cdGo.SetActive(false);
+
+        var cdSec = CreateCooldownSecondsOnIcon(iconHost.transform);
+
         Text Mana = CreateStatText(col.transform);
         Text Damage = CreateStatText(col.transform);
         Text Heal = CreateStatText(col.transform);
-        Text CdMax = CreateStatText(col.transform);
-        Text CdCur = CreateStatText(col.transform);
 
         return new SkillColumn
         {
             Root = col,
             KeyLabel = keyT,
             Icon = iconImg,
+            CdOverlay = cdImg,
             Frame = fr,
             Mana = Mana,
             Damage = Damage,
             Heal = Heal,
-            CdMax = CdMax,
-            CdCur = CdCur
+            CdSecondsOnIcon = cdSec
         };
+    }
+
+    static Text CreateCooldownSecondsOnIcon(Transform iconHost)
+    {
+        var go = CreateUIObject("CooldownSeconds", iconHost);
+        StretchFull(go.GetComponent<RectTransform>());
+        var t = go.AddComponent<Text>();
+        t.font = UiFont;
+        t.text = "";
+        t.fontSize = 22;
+        t.fontStyle = FontStyle.Bold;
+        t.alignment = TextAnchor.MiddleCenter;
+        t.color = Color.white;
+        t.horizontalOverflow = HorizontalWrapMode.Overflow;
+        t.verticalOverflow = VerticalWrapMode.Overflow;
+        t.raycastTarget = false;
+        t.alignByGeometry = true;
+        var outline = go.AddComponent<Outline>();
+        outline.effectColor = new Color(0f, 0f, 0f, 0.92f);
+        outline.effectDistance = new Vector2(1.25f, -1.25f);
+        outline.useGraphicAlpha = true;
+        go.SetActive(false);
+        return t;
     }
 
     static Text CreateStatText(Transform parent)
