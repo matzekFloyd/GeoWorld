@@ -107,13 +107,19 @@ public class EnemyGenerator : MonoBehaviour {
     {
         if (m_Player == null) return;
 
-        int desiredEnemyCount = m_Player.getCurLevel() * GameBalanceHelper.EnemiesPerPlayerLevel;
+        int level = m_Player.getCurLevel();
+        int desiredEnemyCount;
+        if (level <= 1)
+            desiredEnemyCount = GameBalanceHelper.EnemiesAtPlayerLevel1;
+        else if (level == 2)
+            desiredEnemyCount = GameBalanceHelper.EnemiesAtPlayerLevel2;
+        else
+            desiredEnemyCount = level * GameBalanceHelper.EnemiesPerPlayerLevel;
         int currentEnemyCount = targets.Count;
 
         if (m_EnemySpawnRemaining == 0)
         {
-            bool greaterEnemySpawnEnabled = m_Player.getCurLevel() >= GameBalanceHelper.GreaterEnemiesMinPlayerLevel;
-            int level = m_Player.getCurLevel();
+            bool greaterEnemySpawnEnabled = level >= GameBalanceHelper.GreaterEnemiesMinPlayerLevel;
             if (greaterEnemySpawnEnabled &&
                 level % GameBalanceHelper.BossSpawnLevelMultiple == 0 &&
                 m_LastBossSpawnForPlayerLevel != level)
@@ -202,6 +208,56 @@ public class EnemyGenerator : MonoBehaviour {
     private GameObject[] AvailableSpawnpoints()
     {
         return spawnPoints;
+    }
+
+    /// <summary>
+    /// Axis-aligned bounds on the XZ plane from spawn points, player, and boss spawns (plus padding).
+    /// Used by the minimap; if nothing is registered yet, returns false.
+    /// </summary>
+    public bool TryGetArenaBoundsXZ(out Vector3 center, out Vector2 halfExtents, float paddingWorld = 22f, float minHalfExtent = 100f)
+    {
+        center = Vector3.zero;
+        halfExtents = Vector2.one * minHalfExtent;
+
+        var pts = new List<Vector3>(16);
+        if (spawnPoints != null)
+        {
+            for (var i = 0; i < spawnPoints.Length; i++)
+            {
+                if (spawnPoints[i] != null)
+                    pts.Add(spawnPoints[i].transform.position);
+            }
+        }
+        if (greaterEnemySpawnPoints != null)
+        {
+            for (var i = 0; i < greaterEnemySpawnPoints.Length; i++)
+            {
+                if (greaterEnemySpawnPoints[i] != null)
+                    pts.Add(greaterEnemySpawnPoints[i].transform.position);
+            }
+        }
+        if (endBossSpawnPoint != null)
+            pts.Add(endBossSpawnPoint.transform.position);
+        if (player != null)
+            pts.Add(player.transform.position);
+
+        if (pts.Count == 0)
+            return false;
+
+        var min = pts[0];
+        var max = pts[0];
+        for (var i = 1; i < pts.Count; i++)
+        {
+            var p = pts[i];
+            min = Vector3.Min(min, p);
+            max = Vector3.Max(max, p);
+        }
+
+        center = new Vector3(0.5f * (min.x + max.x), 0f, 0.5f * (min.z + max.z));
+        var hx = Mathf.Max((max.x - min.x) * 0.5f + paddingWorld, minHalfExtent);
+        var hz = Mathf.Max((max.z - min.z) * 0.5f + paddingWorld, minHalfExtent);
+        halfExtents = new Vector2(hx, hz);
+        return true;
     }
 
     public void spawnEndBoss()

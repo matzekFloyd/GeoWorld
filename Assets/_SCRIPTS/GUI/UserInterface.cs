@@ -32,6 +32,7 @@ public class UserInterface : MonoBehaviour
     private float playerExpNeededForLevelUp;
 
     GameplayHudView _hud;
+    MinimapRadar _minimap;
 
     readonly string[] _keyLabels = new string[SkillCount];
     readonly Sprite[] _skillIcons = new Sprite[SkillCount];
@@ -67,10 +68,13 @@ public class UserInterface : MonoBehaviour
         _hud = GetComponent<GameplayHudView>();
         if (_hud == null)
             _hud = gameObject.AddComponent<GameplayHudView>();
+        _minimap = GetComponent<MinimapRadar>();
         if (GetComponent<CombatFeedback>() == null)
             gameObject.AddComponent<CombatFeedback>();
         if (GetComponent<FloatingDamageNumberPool>() == null)
             gameObject.AddComponent<FloatingDamageNumberPool>();
+        if (GetComponent<MinimapRadar>() == null)
+            gameObject.AddComponent<MinimapRadar>();
     }
 
     void Start()
@@ -141,6 +145,8 @@ public class UserInterface : MonoBehaviour
         BuildSkillStrings();
 
         bool show = m_GameOver != null && !m_GameOver.playerDied && !m_GameOver.gameTimeIsOver;
+        if (_minimap != null)
+            _minimap.SetGameplayHudVisible(show);
         _hud.RefreshGameplay(
             show,
             Mathf.RoundToInt(curPlayerLevel),
