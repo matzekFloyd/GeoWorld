@@ -29,18 +29,34 @@ public sealed class CombatFeedback : MonoBehaviour
             Destroy(this);
             return;
         }
+        RegisterAndEnsureAudio();
+    }
+
+    void Start()
+    {
+        GameplaySfx.EnsureSceneHasAudioListener();
+        ResolveCamera();
+    }
+
+    void OnEnable()
+    {
+        RegisterAndEnsureAudio();
+    }
+
+    void RegisterAndEnsureAudio()
+    {
+        if (Instance != null && Instance != this)
+            return;
         Instance = this;
-        _audio = GetComponent<AudioSource>();
+        if (_audio == null)
+            _audio = GetComponent<AudioSource>();
         if (_audio == null)
             _audio = gameObject.AddComponent<AudioSource>();
         _audio.playOnAwake = false;
         _audio.spatialBlend = 0f;
         _audio.dopplerLevel = 0f;
-    }
-
-    void Start()
-    {
-        ResolveCamera();
+        _audio.volume = 1f;
+        _audio.mute = false;
     }
 
     void OnDestroy()
@@ -58,6 +74,7 @@ public sealed class CombatFeedback : MonoBehaviour
 
     public void NotifyPlayerDamaged(float amount, Vector3 worldSource, bool hasWorldSource, CombatHitSeverity severity)
     {
+        RegisterAndEnsureAudio();
         var hud = GameplayHudView.Instance;
         bool reduced = ReducedMotion;
         float centerPeak = severity switch
@@ -94,8 +111,9 @@ public sealed class CombatFeedback : MonoBehaviour
                 dmgPool.SpawnPlayerDamageTaken(p.transform, amount, severity);
         }
 
-        if (_playerHitClip != null && _audio != null)
-            _audio.PlayOneShot(_playerHitClip, Mathf.Clamp01(0.55f + amount / 500f));
+        var playerHit = _playerHitClip != null ? _playerHitClip : ProceduralEditorBlips.Get(110);
+        if (playerHit != null && _audio != null)
+            _audio.PlayOneShot(playerHit, Mathf.Clamp01(0.55f + amount / 500f));
 
         if (!reduced && _cameraShakeMax > 0.0001f)
         {
@@ -119,8 +137,10 @@ public sealed class CombatFeedback : MonoBehaviour
         if (enemyRoot == null)
             return;
 
-        if (_enemyHitClip != null && _audio != null)
-            _audio.PlayOneShot(_enemyHitClip, Mathf.Clamp01(0.45f + damage / 800f));
+        RegisterAndEnsureAudio();
+        var enemyHit = _enemyHitClip != null ? _enemyHitClip : ProceduralEditorBlips.Get(111);
+        if (enemyHit != null && _audio != null)
+            _audio.PlayOneShot(enemyHit, Mathf.Clamp01(0.45f + damage / 800f));
 
         float punch = severity switch
         {

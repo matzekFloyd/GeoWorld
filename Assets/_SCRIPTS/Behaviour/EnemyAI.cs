@@ -109,7 +109,19 @@ public class EnemyAI : MonoBehaviour {
 
     private void spawn()
     {
-        if (spawnFinished) state = State.Idle;
+        if (!spawnFinished)
+            return;
+        EnsureEnemyCharacter();
+        var boss = m_EnemyCharacter != null && m_EnemyCharacter.isBoss;
+        var sfx = GameplaySfx.Instance;
+        if (sfx != null)
+        {
+            if (boss)
+                sfx.PlayEnemySpawnElite();
+            else
+                sfx.PlayEnemySpawnNormal();
+        }
+        state = State.Idle;
     }
 
     private void idle()
@@ -157,7 +169,10 @@ public class EnemyAI : MonoBehaviour {
         {
             var pcHealth = target.GetComponent<PlayerCharacter>();
             if (pcHealth != null)
+            {
                 pcHealth.ApplyIncomingDamage(damage, transform.position, true, CombatHitSeverity.Light);
+                GameplaySfx.Instance?.PlayEnemyMeleeAttack();
+            }
             attackTimer = coolDown;
         }
         
@@ -338,10 +353,13 @@ public class EnemyAI : MonoBehaviour {
 
     private void die()
     {
+        EnsureEnemyCharacter();
+        var bossDie = m_EnemyCharacter != null && m_EnemyCharacter.isBoss;
+        GameplaySfx.Instance?.PlayEnemyDie(bossDie);
+
         enemyGenerator.GetComponent<EnemyGenerator>().targets.Remove(this.transform);
         target.GetComponent<FreezeTime>().enemiesToFreeze.Remove(this.gameObject);
 
-        EnsureEnemyCharacter();
         EnemyCharacter ec = m_EnemyCharacter;
         if (ec == null)
         {

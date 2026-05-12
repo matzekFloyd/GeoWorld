@@ -45,6 +45,7 @@ public class GeoShot : SkillBasic
     public void shoot()
     {
         m_Player.curMana -= manacost;
+        GameplaySfx.Instance?.PlayGeoShotCast();
 
         var pools = GeoWorldObjectPools.Instance;
         GameObject shot = pools != null

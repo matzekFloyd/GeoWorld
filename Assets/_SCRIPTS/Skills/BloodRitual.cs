@@ -59,6 +59,8 @@ public class BloodRitual : SkillBasic{
 
             m_Player.curHealth -= healthToManaValue;
             m_Player.curMana += healthToManaValue;
+            if (healthToManaValue > 0.0001f)
+                GameplaySfx.Instance?.PlayBloodRitualCast();
         }
      }
 

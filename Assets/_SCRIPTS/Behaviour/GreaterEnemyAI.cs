@@ -105,7 +105,10 @@ public class GreaterEnemyAI : MonoBehaviour {
 
     private void spawn()
     {
-        if (spawnFinished) state = State.Idle;
+        if (!spawnFinished)
+            return;
+        GameplaySfx.Instance?.PlayEnemySpawnElite();
+        state = State.Idle;
     }
 
     private void idle()
@@ -134,6 +137,7 @@ public class GreaterEnemyAI : MonoBehaviour {
             pools.Acquire(smallHomingMissile, transform.position, transform.rotation, null);
         else if (smallHomingMissile != null)
             Instantiate(smallHomingMissile, transform.position, transform.rotation);
+        GameplaySfx.Instance?.PlayEnemyRangedAttack();
         shootSmallTimer = 3;
 
         state = State.Idle;
@@ -148,7 +152,8 @@ public class GreaterEnemyAI : MonoBehaviour {
             pools.Acquire(bigHomingMissile, transform.position, transform.rotation, null);
         else if (bigHomingMissile != null)
             Instantiate(bigHomingMissile, transform.position, transform.rotation);
-        
+
+        GameplaySfx.Instance?.PlayEnemyRangedAttack();
         shootBigTimer = 15;
 
         state = State.Idle;
@@ -295,9 +300,12 @@ public class GreaterEnemyAI : MonoBehaviour {
 
     private void die()
     {
+        var ec = this.gameObject.GetComponent<EnemyCharacter>();
+        var boss = ec != null && ec.isBoss;
+        GameplaySfx.Instance?.PlayEnemyDie(boss);
+
         enemyGenerator.GetComponent<EnemyGenerator>().targets.Remove(this.transform);
 
-        EnemyCharacter ec = this.gameObject.GetComponent<EnemyCharacter>();
         float gainedExp = ec.expOnKill;
         target.GetComponent<PlayerCharacter>().AddExp(gainedExp);
         

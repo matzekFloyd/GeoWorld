@@ -75,6 +75,8 @@ public class UserInterface : MonoBehaviour
             gameObject.AddComponent<FloatingDamageNumberPool>();
         if (GetComponent<MinimapRadar>() == null)
             gameObject.AddComponent<MinimapRadar>();
+        if (GetComponent<GameplaySfx>() == null)
+            gameObject.AddComponent<GameplaySfx>();
     }
 
     void Start()
