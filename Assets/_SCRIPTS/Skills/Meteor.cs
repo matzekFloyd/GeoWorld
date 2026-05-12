@@ -40,6 +40,7 @@ public class Meteor : SkillBasic {
     public void shootFireBall()
     {
         m_Player.curMana -= manacost;
+        GameplaySfx.Instance?.PlayMeteorCast();
         var pools = GeoWorldObjectPools.Instance;
         GameObject shot = pools != null
             ? pools.Acquire(meteor, camPos.position + camPos.forward * 5, camPos.rotation, null)

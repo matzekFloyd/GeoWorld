@@ -65,6 +65,7 @@ public class FreezeTime : SkillBasic
     {
 
         m_Player.curMana -= manacost;
+        GameplaySfx.Instance?.PlayFreezeTimeCast();
 
         for (int i = 0; i < enemiesToFreeze.Count; i++)
         {

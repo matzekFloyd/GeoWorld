@@ -10,13 +10,11 @@ public class HealSelf : SkillBasic {
 
     private float healingAmount;
     public AudioClip healSound;
-    AudioSource a;
 
 	// Use this for initialization
 	void Start () {
         curCooldown = 0;
         healTimer = 1;
-        a = GetComponent<AudioSource>();
         showHealTexture = false;
     }
 
@@ -53,7 +51,7 @@ public class HealSelf : SkillBasic {
     {
             m_Player.curMana -= manacost;
 
-            a.PlayOneShot(healSound, 1F);
+            GameplaySfx.Instance?.PlayHealCast(healSound);
             m_Player.changeCurrentHealth(healingAmount);
      }
 
