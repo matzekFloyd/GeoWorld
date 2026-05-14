@@ -12,12 +12,14 @@ using UnityEngine;
 /// <item><description>Mana cost, damage, heal amounts: whole numbers (<c>F0</c>).</description></item>
 /// <item><description>Cooldown max: invariant <c>0.#</c>; empty when max is 0 (no CD row).</description></item>
 /// <item><description>Cooldown remaining (for overlay): same <c>0.#</c> while on cooldown; empty when <c>curCooldown</c> ≤ <c>0.02</c> (same cutoff as <see cref="GameplayHudView"/>), so no misleading <c>0.00</c> when usable.</description></item>
-/// <item><description>GeoPhysics regen line keeps one decimal before <c>/s</c>.</description></item>
+/// <item><description>Non-applicable damage/heal cells (e.g. Freeze Time) use <see cref="HudNotApplicableStat"/> instead of a bare hyphen.</description></item>
 /// </list>
 /// </remarks>
 public class UserInterface : MonoBehaviour
 {
     const int SkillCount = 8;
+    /// <summary>Shown in damage/heal HUD sub-columns when a skill has no meaningful value there (not a minus sign).</summary>
+    const string HudNotApplicableStat = "N/A";
     static readonly int[] SkillMinLevels = { 1, 1, 1, 2, 4, 6, 8, 10 };
 
     private GameObject player;
@@ -248,8 +250,8 @@ public class UserInterface : MonoBehaviour
             else if (i == 6 && m_FreezeTime != null)
             {
                 _skillMana[i] = FormatHudWhole(m_FreezeTime.manacost);
-                _skillDmg[i] = "-";
-                _skillHeal[i] = "-";
+                _skillDmg[i] = HudNotApplicableStat;
+                _skillHeal[i] = HudNotApplicableStat;
                 _skillCdMax[i] = FormatHudCooldownSeconds(m_FreezeTime.maxCooldown);
                 _skillCdCur[i] = FormatHudCooldownCurrent(m_FreezeTime.curCooldown);
             }
