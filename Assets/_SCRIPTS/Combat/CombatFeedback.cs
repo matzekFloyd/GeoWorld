@@ -159,15 +159,17 @@ public sealed class CombatFeedback : MonoBehaviour
             dur *= 0.75f;
         }
 
-        StartCoroutine(ScalePunchRoutine(enemyRoot, punch, dur));
+        var ecForPunch = enemyRoot.GetComponent<EnemyCharacter>();
+        if (ecForPunch != null && ecForPunch.isBoss)
+            punch = 1f + (punch - 1f) * 0.55f;
+
+        var restScale = ecForPunch != null ? ecForPunch.HitPunchRestLocalScale : enemyRoot.localScale;
+        StartCoroutine(ScalePunchRoutine(enemyRoot, restScale, punch, dur));
 
         var dmgPool = FloatingDamageNumberPool.Instance;
         if (dmgPool != null)
         {
-            bool isBoss = false;
-            var ec = enemyRoot.GetComponent<EnemyCharacter>();
-            if (ec != null)
-                isBoss = ec.isBoss;
+            bool isBoss = ecForPunch != null && ecForPunch.isBoss;
             dmgPool.SpawnEnemyDamage(enemyRoot, damage, severity, isBoss);
         }
     }
@@ -238,11 +240,11 @@ public sealed class CombatFeedback : MonoBehaviour
         s_hitStopRoutineRunning = false;
     }
 
-    static IEnumerator ScalePunchRoutine(Transform root, float peakScale, float duration)
+    static IEnumerator ScalePunchRoutine(Transform root, Vector3 restLocalScale, float peakScale, float duration)
     {
         if (root == null)
             yield break;
-        var baseScale = root.localScale;
+        var baseScale = restLocalScale;
         if (baseScale.sqrMagnitude < 1e-8f)
             yield break;
 

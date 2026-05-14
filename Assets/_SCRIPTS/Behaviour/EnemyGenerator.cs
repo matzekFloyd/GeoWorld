@@ -1,8 +1,22 @@
-﻿using UnityEngine;
+﻿using System.Collections;
 using System.Collections.Generic;
+using UnityEngine;
 
-public class EnemyGenerator : MonoBehaviour {
-
+/// <summary>
+/// Maintains desired living enemy counts from <see cref="GameBalanceHelper"/> vs <see cref="targets"/>.
+/// </summary>
+/// <remarks>
+/// <para><b>Boss cadence</b> (also documented in README): when player level is at least
+/// <see cref="GameBalanceHelper.GreaterEnemiesMinPlayerLevel"/> and is a multiple of
+/// <see cref="GameBalanceHelper.BossSpawnLevelMultiple"/>, a boss encounter is <b>scheduled once per level</b>.
+/// Example with defaults (10, 5): bosses at levels 10, 15, 20, …</para>
+/// <para>A <b>telegraph</b> runs first (HUD banner + screen tint + optional SFX, real-time seconds from
+/// <see cref="GameBalanceHelper.BossTelegraphDurationSeconds"/>), then the boss prefab spawns if there is still
+/// no living boss in <see cref="targets"/> and <see cref="endBossPrefab"/> / spawn transforms are valid.
+/// Only one living boss is allowed at a time to avoid spam.</para>
+/// </remarks>
+public class EnemyGenerator : MonoBehaviour
+{
     public enum State
     {
         Idle,
@@ -17,15 +31,14 @@ public class EnemyGenerator : MonoBehaviour {
     public GameObject endBossSpawnPoint;
     public GameObject[] greaterEnemySpawnPoints;
 
-
     public GameObject endBossPrefab;
-    private GameObject player;
-    private PlayerCharacter m_Player;
-    private FreezeTime m_FreezeTime;
+    GameObject player;
+    PlayerCharacter m_Player;
+    FreezeTime m_FreezeTime;
 
     public List<Transform> targets;
 
-    public State state; //lokale Variable für den aktuellen State
+    public State state;
 
     [Header("Pooling / spawn burst")]
     [Tooltip("Max normal enemies spawned per frame when catching up to level × enemiesPerLevel.")]
@@ -38,10 +51,11 @@ public class EnemyGenerator : MonoBehaviour {
     int m_EnemySpawnRemaining;
     int m_EnemySpawnWaveIndex;
     int m_LastBossSpawnForPlayerLevel = -1;
+    bool m_BossSpawnRoutineActive;
     GeoWorldObjectPools m_Pools;
 
-	// Use this for initialization
-	void Start () {
+    void Start()
+    {
         targets = new List<Transform>();
         player = GameObject.FindGameObjectWithTag("Player1");
         if (player != null)
@@ -68,9 +82,8 @@ public class EnemyGenerator : MonoBehaviour {
             m_Pools.Prewarm(endBossPrefab, prewarmEndBossInstances);
     }
 
-    // Update is called once per frame
-    void Update () {
-        
+    void Update()
+    {
         switch (state)
         {
             case State.Initialize:
@@ -85,27 +98,24 @@ public class EnemyGenerator : MonoBehaviour {
         }
     }
 
-    private void Initialize()
+    void Initialize()
     {
         if (!CheckForEnemyPrefabs())
-        {
             return;
-        }
         if (!CheckForSpawnpoints())
-        {
             return;
-        }
         state = EnemyGenerator.State.Setup;
     }
 
-    private void Setup()
+    void Setup()
     {
         state = EnemyGenerator.State.SpawnEnemy;
     }
 
-    private void SpawnEnemy()
+    void SpawnEnemy()
     {
-        if (m_Player == null) return;
+        if (m_Player == null)
+            return;
 
         int level = m_Player.getCurLevel();
         int desiredEnemyCount;
@@ -120,12 +130,17 @@ public class EnemyGenerator : MonoBehaviour {
         if (m_EnemySpawnRemaining == 0)
         {
             bool greaterEnemySpawnEnabled = level >= GameBalanceHelper.GreaterEnemiesMinPlayerLevel;
+            int multiple = GameBalanceHelper.BossSpawnLevelMultiple;
             if (greaterEnemySpawnEnabled &&
-                level % GameBalanceHelper.BossSpawnLevelMultiple == 0 &&
-                m_LastBossSpawnForPlayerLevel != level)
+                multiple > 0 &&
+                level % multiple == 0 &&
+                m_LastBossSpawnForPlayerLevel != level &&
+                !m_BossSpawnRoutineActive &&
+                !IsBossAliveInTargets() &&
+                endBossPrefab != null &&
+                TryGetBossSpawnTransform(out _, out _))
             {
-                spawnEndBoss();
-                m_LastBossSpawnForPlayerLevel = level;
+                StartCoroutine(BossTelegraphAndSpawnRoutine(level));
             }
 
             int toSpawn = desiredEnemyCount - currentEnemyCount;
@@ -167,14 +182,93 @@ public class EnemyGenerator : MonoBehaviour {
             state = EnemyGenerator.State.Idle;
     }
 
+    IEnumerator BossTelegraphAndSpawnRoutine(int level)
+    {
+        m_BossSpawnRoutineActive = true;
+        m_LastBossSpawnForPlayerLevel = level;
+        try
+        {
+            GameplayHudView.Instance?.PlayBossIncomingTelegraph(
+                GameBalanceHelper.BossTelegraphDurationSeconds,
+                level,
+                GameBalanceHelper.BossTelegraphTintAlpha);
+            GameplaySfx.Instance?.PlayBossIncoming();
+
+            yield return new WaitForSecondsRealtime(GameBalanceHelper.BossTelegraphDurationSeconds);
+
+            if (endBossPrefab == null || IsBossAliveInTargets())
+                yield break;
+
+            if (!TryGetBossSpawnTransform(out var spawnPos, out var parentT))
+                yield break;
+
+            GameObject endBoss = m_Pools != null
+                ? m_Pools.Acquire(endBossPrefab, spawnPos, Quaternion.identity, parentT)
+                : Instantiate(endBossPrefab, spawnPos, Quaternion.identity, parentT);
+            if (endBoss == null)
+                yield break;
+
+            var bossChar = endBoss.GetComponent<EnemyCharacter>();
+            if (bossChar != null)
+                bossChar.isBoss = true;
+            AddTarget(endBoss.transform);
+        }
+        finally
+        {
+            m_BossSpawnRoutineActive = false;
+        }
+    }
+
+    bool IsBossAliveInTargets()
+    {
+        if (targets == null)
+            return false;
+        for (var i = 0; i < targets.Count; i++)
+        {
+            var t = targets[i];
+            if (t == null)
+                continue;
+            var ec = t.GetComponent<EnemyCharacter>();
+            if (ec != null && ec.isBoss)
+                return true;
+        }
+        return false;
+    }
+
+    bool TryGetBossSpawnTransform(out Vector3 position, out Transform parent)
+    {
+        position = default;
+        parent = null;
+        if (endBossSpawnPoint != null)
+        {
+            position = endBossSpawnPoint.transform.position;
+            parent = endBossSpawnPoint.transform;
+            return true;
+        }
+
+        if (greaterEnemySpawnPoints == null || greaterEnemySpawnPoints.Length == 0)
+            return false;
+
+        var start = Random.Range(0, greaterEnemySpawnPoints.Length);
+        for (var k = 0; k < greaterEnemySpawnPoints.Length; k++)
+        {
+            var sp = greaterEnemySpawnPoints[(start + k) % greaterEnemySpawnPoints.Length];
+            if (sp == null)
+                continue;
+            position = sp.transform.position;
+            parent = sp.transform;
+            return true;
+        }
+
+        return false;
+    }
+
     public void AddAllEnemies()
     {
         GameObject[] go = GameObject.FindGameObjectsWithTag("Enemy");
 
         foreach (GameObject enemy in go)
-        {
             AddTarget(enemy.transform);
-        }
     }
 
     public void AddTarget(Transform enemy)
@@ -182,30 +276,17 @@ public class EnemyGenerator : MonoBehaviour {
         targets.Add(enemy);
     }
 
-    private bool CheckForEnemyPrefabs()
+    bool CheckForEnemyPrefabs()
     {
-        if(enemyPrefabs.Length > 0)
-        {
-            return true;
-        }else
-        {
-            return false;
-        }
+        return enemyPrefabs != null && enemyPrefabs.Length > 0;
     }
 
-    private bool CheckForSpawnpoints()
+    bool CheckForSpawnpoints()
     {
-        if(spawnPoints.Length > 0)
-        {
-            return true;
-        }else
-        {
-            return false;
-        }
+        return spawnPoints != null && spawnPoints.Length > 0;
     }
 
-
-    private GameObject[] AvailableSpawnpoints()
+    GameObject[] AvailableSpawnpoints()
     {
         return spawnPoints;
     }
@@ -260,17 +341,22 @@ public class EnemyGenerator : MonoBehaviour {
         return true;
     }
 
+    /// <summary>Legacy entry point; prefer the telegraphed flow from <see cref="SpawnEnemy"/>.</summary>
     public void spawnEndBoss()
     {
-        int randomizeSpawnpointValue = Random.Range(1, 4);
+        if (endBossPrefab == null || IsBossAliveInTargets())
+            return;
+        if (!TryGetBossSpawnTransform(out var spawnPos, out var parentT))
+            return;
 
         GameObject endBoss = m_Pools != null
-            ? m_Pools.Acquire(endBossPrefab, greaterEnemySpawnPoints[randomizeSpawnpointValue].transform.position, Quaternion.identity, greaterEnemySpawnPoints[randomizeSpawnpointValue].transform)
-            : Instantiate(endBossPrefab, greaterEnemySpawnPoints[randomizeSpawnpointValue].transform.position, Quaternion.identity, greaterEnemySpawnPoints[randomizeSpawnpointValue].transform);
-        EnemyCharacter bossChar = endBoss.GetComponent<EnemyCharacter>();
+            ? m_Pools.Acquire(endBossPrefab, spawnPos, Quaternion.identity, parentT)
+            : Instantiate(endBossPrefab, spawnPos, Quaternion.identity, parentT);
+        if (endBoss == null)
+            return;
+        var bossChar = endBoss.GetComponent<EnemyCharacter>();
         if (bossChar != null)
             bossChar.isBoss = true;
         AddTarget(endBoss.transform);
-
     }
 }

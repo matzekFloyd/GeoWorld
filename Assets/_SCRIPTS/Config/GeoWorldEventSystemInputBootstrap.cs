@@ -30,7 +30,7 @@ static class GeoWorldEventSystemInputBootstrap
 
     static void UpgradeAllEventSystems()
     {
-        foreach (var es in Object.FindObjectsByType<EventSystem>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+        foreach (var es in Object.FindObjectsByType<EventSystem>(FindObjectsInactive.Include))
         {
             var standalone = es.GetComponent<StandaloneInputModule>();
             if (standalone == null)

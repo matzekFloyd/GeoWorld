@@ -29,6 +29,10 @@ public class GameOver : MonoBehaviour {
 
     public int enemyKillCounter;
     public int greaterEnemyKillCounter;
+    /// <summary>Living bosses defeated (not mixed into <see cref="greaterEnemyKillCounter"/>).</summary>
+    public int bossKillCounter;
+    /// <summary>Cumulative bonus score from boss kills (<see cref="GameBalanceHelper.BossScoreBonusOnKill"/> per boss).</summary>
+    public int bossBonusScoreTotal;
 
     public Text gameOverText;
     public Text scoreBoardTextEnemies;
@@ -36,6 +40,9 @@ public class GameOver : MonoBehaviour {
     public Text pressButtonToCloseGame;
 
     private bool m_TimeFrozen;
+
+    Text m_BossHudCounter;
+    Text m_BossScoreboardCounter;
 
 
     // Use this for initialization
@@ -47,7 +54,32 @@ public class GameOver : MonoBehaviour {
         player = GameObject.FindGameObjectWithTag("Player1");
         if (player != null)
             m_Player = player.GetComponent<PlayerCharacter>();
+        EnsureBossHudCounter();
         LayoutTopRightHudCounters();
+    }
+
+    void EnsureBossHudCounter()
+    {
+        if (m_BossHudCounter != null)
+            return;
+        if (textGreaterEnemyCounter == null)
+            return;
+        var go = Instantiate(textGreaterEnemyCounter.gameObject, textGreaterEnemyCounter.transform.parent);
+        go.name = "BossKillCounterHud";
+        m_BossHudCounter = go.GetComponent<Text>();
+        if (m_BossHudCounter != null)
+            m_BossHudCounter.text = "Bosses defeated: 0";
+    }
+
+    void EnsureBossScoreboardText()
+    {
+        if (m_BossScoreboardCounter != null)
+            return;
+        if (scoreBoardTextGreaterEnemies == null)
+            return;
+        var go = Instantiate(scoreBoardTextGreaterEnemies.gameObject, scoreBoardTextGreaterEnemies.transform.parent);
+        go.name = "BossScoreboardLine";
+        m_BossScoreboardCounter = go.GetComponent<Text>();
     }
 
     /// <summary>
@@ -64,6 +96,8 @@ public class GameOver : MonoBehaviour {
         AnchorTopRightLine(textEnemyCounter, new Vector2(-insetX, y));
         y -= lineHeight;
         AnchorTopRightLine(textGreaterEnemyCounter, new Vector2(-insetX, y));
+        y -= lineHeight;
+        AnchorTopRightLine(m_BossHudCounter, new Vector2(-insetX, y));
     }
 
     static void AnchorTopRightLine(Text t, Vector2 anchoredPosition)
@@ -104,6 +138,7 @@ public class GameOver : MonoBehaviour {
             if (textTimer != null) textTimer.enabled = false;
             if (textEnemyCounter != null) textEnemyCounter.enabled = false;
             if (textGreaterEnemyCounter != null) textGreaterEnemyCounter.enabled = false;
+            if (m_BossHudCounter != null) m_BossHudCounter.enabled = false;
 
             if (playerDied)
                 ApplyEndGameUi("Game Over! You died!");
@@ -122,6 +157,12 @@ public class GameOver : MonoBehaviour {
                 textEnemyCounter.text = "Enemies killed: " + enemyKillCounter;
             if (textGreaterEnemyCounter != null)
                 textGreaterEnemyCounter.text = "Greater Enemies killed: " + greaterEnemyKillCounter;
+            if (m_BossHudCounter != null)
+            {
+                m_BossHudCounter.text = bossBonusScoreTotal > 0
+                    ? "Bosses defeated: " + bossKillCounter + "  (+" + bossBonusScoreTotal + " boss score)"
+                    : "Bosses defeated: " + bossKillCounter;
+            }
         }
 
     }
@@ -132,6 +173,14 @@ public class GameOver : MonoBehaviour {
             scoreBoardTextEnemies.text = "Enemies killed: " + enemyKillCounter;
         if (scoreBoardTextGreaterEnemies != null)
             scoreBoardTextGreaterEnemies.text = "Greater Enemies killed: " + greaterEnemyKillCounter;
+        EnsureBossScoreboardText();
+        if (m_BossScoreboardCounter != null)
+        {
+            m_BossScoreboardCounter.gameObject.SetActive(true);
+            m_BossScoreboardCounter.text = bossBonusScoreTotal > 0
+                ? "Bosses defeated: " + bossKillCounter + "  (+" + bossBonusScoreTotal + " boss score)"
+                : "Bosses defeated: " + bossKillCounter;
+        }
         if (gameOverText != null)
             gameOverText.text = title;
     }

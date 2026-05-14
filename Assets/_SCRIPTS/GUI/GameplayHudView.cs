@@ -44,6 +44,7 @@ public sealed class GameplayHudView : MonoBehaviour
     Image _hitTakenCenterPulse;
     Image[] _hitTakenEdges;
     Coroutine _hitTakenRoutine;
+    Coroutine _bossIncomingRoutine;
 
     RectTransform _damageNumbersHost;
 
@@ -245,6 +246,133 @@ public sealed class GameplayHudView : MonoBehaviour
         if (_hitTakenRoutine != null)
             StopCoroutine(_hitTakenRoutine);
         _hitTakenRoutine = StartCoroutine(HitTakenFeedbackRoutine(hasDirection, dirX, dirY, centerPeakAlpha, edgePeakAlpha, duration, reducedMotion));
+    }
+
+    /// <summary>Banner + screen tint (real-time) before a boss entity spawns.</summary>
+    public void PlayBossIncomingTelegraph(float durationRealtime, int playerLevel, float tintMaxAlpha)
+    {
+        if (!_built || _canvas == null)
+        {
+#if UNITY_2023_1_OR_NEWER
+            var ui = Object.FindAnyObjectByType<UserInterface>(FindObjectsInactive.Include);
+#else
+            var ui = FindObjectOfType<UserInterface>();
+#endif
+            if (ui != null)
+                EnsureBuilt(ui);
+        }
+        if (!_built || _canvas == null)
+            return;
+        if (_bossIncomingRoutine != null)
+        {
+            StopCoroutine(_bossIncomingRoutine);
+            _bossIncomingRoutine = null;
+        }
+        _bossIncomingRoutine = StartCoroutine(BossIncomingTelegraphRoutine(durationRealtime, playerLevel, tintMaxAlpha));
+    }
+
+    IEnumerator BossIncomingTelegraphRoutine(float durationRealtime, int playerLevel, float tintMaxAlpha)
+    {
+        var canvasRt = _canvas.transform as RectTransform;
+        var root = new GameObject("BossIncomingOverlay", typeof(RectTransform));
+        root.transform.SetParent(canvasRt, false);
+        var rootRt = root.GetComponent<RectTransform>();
+        StretchFull(rootRt);
+        root.transform.SetAsLastSibling();
+
+        var tintGo = CreateUIObject("BossTint", root.transform);
+        var tintRt = tintGo.GetComponent<RectTransform>();
+        StretchFull(tintRt);
+        var tintImg = tintGo.AddComponent<Image>();
+        tintImg.sprite = GetSolidWhiteSprite();
+        tintImg.type = Image.Type.Simple;
+        tintImg.raycastTarget = false;
+        tintImg.color = new Color(0.42f, 0.05f, 0.55f, 0f);
+
+        var titleGo = CreateUIObject("BossTitle", root.transform);
+        var titleRt = titleGo.GetComponent<RectTransform>();
+        titleRt.anchorMin = titleRt.anchorMax = new Vector2(0.5f, 0.58f);
+        titleRt.pivot = new Vector2(0.5f, 0.5f);
+        titleRt.sizeDelta = new Vector2(1600f, 120f);
+        titleRt.anchoredPosition = Vector2.zero;
+        var titleT = titleGo.AddComponent<Text>();
+        titleT.font = UiFont;
+        titleT.text = "BOSS INCOMING";
+        titleT.fontSize = 54;
+        titleT.fontStyle = FontStyle.Bold;
+        titleT.alignment = TextAnchor.MiddleCenter;
+        titleT.color = new Color(1f, 0.92f, 0.55f, 0f);
+        titleT.horizontalOverflow = HorizontalWrapMode.Overflow;
+        titleT.verticalOverflow = VerticalWrapMode.Overflow;
+        titleT.raycastTarget = false;
+        titleT.alignByGeometry = true;
+        var titleOutline = titleGo.AddComponent<Outline>();
+        titleOutline.effectColor = new Color(0f, 0f, 0f, 0.55f);
+        titleOutline.effectDistance = new Vector2(1f, -1f);
+
+        var subGo = CreateUIObject("BossSubtitle", root.transform);
+        var subRt = subGo.GetComponent<RectTransform>();
+        subRt.anchorMin = subRt.anchorMax = new Vector2(0.5f, 0.48f);
+        subRt.pivot = new Vector2(0.5f, 0.5f);
+        subRt.sizeDelta = new Vector2(1400f, 80f);
+        subRt.anchoredPosition = Vector2.zero;
+        var subT = subGo.AddComponent<Text>();
+        subT.font = UiFont;
+        subT.text = "Your power has reached level " + playerLevel.ToString(CultureInfo.InvariantCulture) +
+                    " — a guardian enters the arena.";
+        subT.fontSize = 26;
+        subT.fontStyle = FontStyle.Normal;
+        subT.alignment = TextAnchor.MiddleCenter;
+        subT.color = new Color(0.95f, 0.9f, 1f, 0f);
+        subT.horizontalOverflow = HorizontalWrapMode.Wrap;
+        subT.verticalOverflow = VerticalWrapMode.Overflow;
+        subT.raycastTarget = false;
+        subT.alignByGeometry = true;
+        var subOutline = subGo.AddComponent<Outline>();
+        subOutline.effectColor = new Color(0f, 0f, 0f, 0.45f);
+        subOutline.effectDistance = new Vector2(0.5f, -0.5f);
+
+        const float fadeIn = 0.35f;
+        const float fadeOut = 0.45f;
+        float peakTint = Mathf.Clamp(tintMaxAlpha, 0f, 0.45f);
+        float elapsed = 0f;
+        while (elapsed < durationRealtime)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            float textAlpha;
+            float tintA;
+            if (elapsed < fadeIn)
+            {
+                var k = Mathf.Clamp01(elapsed / fadeIn);
+                textAlpha = k;
+                tintA = peakTint * k;
+            }
+            else if (elapsed > durationRealtime - fadeOut)
+            {
+                var k = Mathf.Clamp01((durationRealtime - elapsed) / fadeOut);
+                textAlpha = k;
+                tintA = peakTint * k;
+            }
+            else
+            {
+                textAlpha = 1f;
+                tintA = peakTint;
+            }
+
+            var tc = titleT.color;
+            tc.a = textAlpha;
+            titleT.color = tc;
+            var sc = subT.color;
+            sc.a = textAlpha * 0.95f;
+            subT.color = sc;
+            var ic = tintImg.color;
+            ic.a = tintA;
+            tintImg.color = ic;
+            yield return null;
+        }
+
+        Destroy(root);
+        _bossIncomingRoutine = null;
     }
 
     IEnumerator HitTakenFeedbackRoutine(bool hasDirection, float dirX, float dirY, float centerPeak, float edgePeak, float duration, bool reducedMotion)
