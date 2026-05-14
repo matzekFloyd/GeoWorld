@@ -72,6 +72,17 @@ public class GameStart : MonoBehaviour
         var prompt = CreateCenteredText(root.transform, promptCopy, 28, TextAnchor.MiddleCenter, FontStyle.Normal, -80f);
         title.color = Color.white;
         prompt.color = new Color(0.9f, 0.9f, 0.92f, 1f);
+
+#if UNITY_WEBGL && !UNITY_EDITOR
+        var webNote = CreateCenteredText(
+            root.transform,
+            "Browser: the match pauses while this tab is in the background.",
+            20,
+            TextAnchor.MiddleCenter,
+            FontStyle.Normal,
+            -150f);
+        webNote.color = new Color(0.72f, 0.8f, 0.96f, 0.92f);
+#endif
     }
 
     static Text CreateCenteredText(Transform parent, string copy, int size, TextAnchor align, FontStyle style, float yOffset)

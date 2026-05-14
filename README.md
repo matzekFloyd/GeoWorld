@@ -154,7 +154,7 @@ This section is the checklist for a **browser** build: loading, audio policy, fu
 
 | Topic | What we do |
 |--------|----------------|
-| **Tab focus / visibility** | `WebGlShipReadyRuntime` (WebGL player only) sets `AudioListener.pause` from `OnApplicationPause` when the tab loses or regains focus. Gameplay **time scale is unchanged** (avoids fighting `GameOver`, which sets `Time.timeScale` to 0 at end of round). To also pause simulation when hidden, you would add a small component that toggles `Time.timeScale` only while the round is active—**not** done by default. |
+| **Tab focus / visibility** | `WebGlShipReadyRuntime` (WebGL **player** builds only) sets `AudioListener.pause` from `OnApplicationPause` / `OnApplicationFocus` when the tab loses or regains focus. While **`GameSession.IsRunActive`** is true, it also sets **`Time.timeScale` to 0** until the tab is focused again, then restores the previous time scale (so the round timer and simulation do not run in the background). It does **not** change time scale when no run is active (title / game-over), so **`GameOver`** can keep `Time.timeScale` at 0 at end of round without this fighting it. |
 | **Background music & autoplay** | Browsers block **autoplay with sound** until a **user gesture**. If the player came from **`Start.unity`**, `GameStart` calls `GeoWorldSessionStart.NotifyGameplayStartingFromTitleScreen()` before loading **`GeoWorldMain`**, and `BackgroundMusic` tries `Play()` on the first gameplay frame, then falls back to “wait for key/mouse” if the clip still is not playing. If the first scene is **`GeoWorldMain`** (no title), `BackgroundMusic` still waits for the first **key** or **mouse button** in `Update`. |
 | **Quit** | `GameOver` does **not** call `Application.Quit()` on WebGL; escape still exits play mode in the Editor. Standalone keeps `Application.Quit()`. |
 | **Input** | WebGL **player** builds use **legacy `Input` only** in `GameInput` to avoid WASM/JS re-entrancy with the new Input System (see **Tuning & configuration**). |
@@ -217,7 +217,7 @@ Fullscreen is provided by the **Unity WebGL player template** (fullscreen contro
 1. **Unity Editor:** *File → Build Profiles* (or *Build Settings*), switch to **WebGL**, then **Build** into a clean folder (e.g. `Builds/WebGL/GeoWorld/`). Do **not** use the repository root as the output path.
 2. **Publishing:** enable **compression** (Brotli/Gzip) consistent with your host; enable **Decompression Fallback** if you are unsure about CDN headers.
 3. **Upload:** upload the **folder that contains `index.html`** at its root (for Netlify CLI: `--dir=Build/WebGL/GeoWorld`; for itch: zip those files).
-4. **Smoke-test:** first load, **click or press a key** to confirm music (autoplay policy), then **tab away** and back to confirm audio mutes/resumes.
+4. **Smoke-test:** first load, **click or press a key** to confirm music (autoplay policy), then **tab away** and back to confirm audio mutes/resumes and that an **in-progress round** does not advance while the tab is hidden (WebGL player build).
 
 ## WebGL CI and Netlify
 
