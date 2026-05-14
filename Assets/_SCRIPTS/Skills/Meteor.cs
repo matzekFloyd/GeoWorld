@@ -25,7 +25,7 @@ public class Meteor : SkillBasic {
 
         if (m_Player.skillAvailable(4))
         {
-            if (GameInput.SkillMeteorUp && requiredMana() && CanUseSkills())
+            if (GameInput.SkillMeteorHeld && requiredMana() && CanUseSkills())
             {
                 if (curCooldown == 0)
                 {

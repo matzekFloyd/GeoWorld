@@ -30,7 +30,7 @@ public class HealSelf : SkillBasic {
 
         if (m_Player.skillAvailable(2))
         {
-            if (GameInput.SkillHealUp && requiredMana() && CanUseSkills())
+            if (GameInput.SkillHealHeld && requiredMana() && CanUseSkills())
             {
                 if (curCooldown == 0)
                 {

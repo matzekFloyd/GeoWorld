@@ -45,7 +45,7 @@ public class FreezeTime : SkillBasic
 
         if (m_Player.skillAvailable(8))
         {
-            if (GameInput.SkillFreezeTimeUp && requiredMana() && CanUseSkills())
+            if (GameInput.SkillFreezeTimeHeld && requiredMana() && CanUseSkills())
             {
                 if (curCooldown == 0)
                 {

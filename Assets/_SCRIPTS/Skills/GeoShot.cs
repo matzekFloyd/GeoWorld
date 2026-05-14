@@ -26,7 +26,7 @@ public class GeoShot : SkillBasic
         geoShotDmg = m_Player.getCurLevel() * 18f;
         updateCoolDown();
         
-        if (GameInput.FirePrimaryDown && requiredMana() && CanUseSkills())
+        if (GameInput.FirePrimaryHeld && requiredMana() && CanUseSkills())
         {
             if (curCooldown == 0)
             {

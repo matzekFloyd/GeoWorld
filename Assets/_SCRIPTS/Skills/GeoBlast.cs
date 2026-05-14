@@ -27,7 +27,7 @@ public class GeoBlast : SkillBasic
         manacost = 6f + m_Player.getCurLevel() * 7.5f;
         updateCoolDown();
 
-        if (GameInput.SecondaryMouseDown && requiredMana() && CanUseSkills())
+        if (GameInput.SecondaryFireHeld && requiredMana() && CanUseSkills())
         {
             if (curCooldown == 0)
             {

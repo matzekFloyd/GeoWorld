@@ -28,7 +28,7 @@ public class BloodRitual : SkillBasic{
 
         if (m_Player.skillAvailable(6))
         {
-            if (GameInput.SkillBloodRitualUp && requiredMana() && CanUseSkills())
+            if (GameInput.SkillBloodRitualHeld && requiredMana() && CanUseSkills())
             {
                 if (curCooldown == 0)
                 {
