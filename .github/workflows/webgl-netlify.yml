@@ -1,7 +1,8 @@
 # WebGL build (game-ci) + deploy to Netlify (static hosting).
+# Tags matching v* on the repo default branch: upload WebGL zip + GitHub Release.
 # Secrets: see README section "WebGL CI and Netlify".
 
-name: WebGL → Netlify
+name: WebGL — Netlify & GitHub releases
 
 concurrency:
   group: webgl-netlify-${{ github.workflow }}-${{ github.ref }}
@@ -23,12 +24,23 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 120
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Tag must be on default branch (master or main)
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        run: |
+          set -euo pipefail
+          default="${{ github.event.repository.default_branch }}"
+          git fetch origin "${default}"
+          git merge-base --is-ancestor "${GITHUB_SHA}" "origin/${default}"
 
       - name: Cache Library
         uses: actions/cache@v4
@@ -53,8 +65,47 @@ jobs:
           # Build/WebGL/WebGL/. Use an explicit name so publish root is Build/WebGL/<name>/.
           buildName: GeoWorld
 
+      - name: Upload WebGL artifact (tags only, for GitHub Release)
+        if: success() && startsWith(github.ref, 'refs/tags/')
+        uses: actions/upload-artifact@v4
+        with:
+          name: geoworld-webgl-${{ github.ref_name }}
+          path: Build/WebGL/GeoWorld/
+          if-no-files-found: error
+
+      # Runs on every successful WebGL build: pushes to master/main, v* tags, and workflow_dispatch.
       - name: Deploy to Netlify (production)
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
         run: npx --yes netlify-cli@17.38.0 deploy --prod --dir=Build/WebGL/GeoWorld
+
+  github-release:
+    needs: build-and-deploy
+    if: success() && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download WebGL artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: geoworld-webgl-${{ github.ref_name }}
+          path: webgl
+
+      - name: Zip WebGL for release
+        shell: bash
+        run: (cd webgl && zip -r "${{ github.workspace }}/GeoWorld-WebGL-${{ github.ref_name }}.zip" .)
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          body: |
+            **WebGL:** attached **`GeoWorld-WebGL-${{ github.ref_name }}.zip`** (publish root = Unity WebGL output).
+
+            This workflow also deploys this revision to **Netlify** when `NETLIFY_AUTH_TOKEN` and `NETLIFY_SITE_ID` are configured (see README).
+          files: GeoWorld-WebGL-${{ github.ref_name }}.zip
+          generate_release_notes: true
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          fail_on_unmatched_files: true

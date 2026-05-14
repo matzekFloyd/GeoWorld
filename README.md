@@ -2,8 +2,6 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-Contributing and security: [`CONTRIBUTING.md`](CONTRIBUTING.md) · [`SECURITY.md`](SECURITY.md)
-
 Unity **6** project (**6000.4.5f1**). A third-person style **survival / horde** prototype built around a **GeoMancer** player: manage health, mana, and XP on a timer while enemies scale with your level.
 
 ## What the game is
@@ -228,8 +226,12 @@ Player-facing WebGL behavior (tab mute, autoplay, fullscreen limits, hosting) is
 GitHub Actions builds **WebGL** with [game-ci `unity-builder`](https://game.ci/docs/github/builder) and deploys the static output to [Netlify](https://www.netlify.com/) on:
 
 - pushes to **`master`** or **`main`**
-- tags matching **`v*`** (e.g. `v1.0.0`), including release tags you push from git—avoid duplicating a separate “on release” trigger so the workflow does not run twice for the same tag
-- manual runs (**Actions → WebGL → Netlify → Run workflow**)
+- tags matching **`v*`** (e.g. `v1.0.0` or `v1.0.0-rc.1`), including release tags you push from git—avoid duplicating a separate “on release” trigger so the workflow does not run twice for the same tag
+- manual runs (**Actions → WebGL — Netlify & GitHub releases → Run workflow**)
+
+**Pull requests** do not deploy to Netlify. They run the separate **Unity CI** workflow (`.github/workflows/unity-ci.yml`), which performs a **StandaloneLinux64** smoke build with the same GameCI license secrets—faster feedback than a full WebGL compile. The project does not ship `com.unity.test-framework` yet; when EditMode/PlayMode tests are added, extend that workflow with [game-ci `unity-test-runner`](https://game.ci/docs/github/test-runner).
+
+**GitHub Releases:** pushing a **`v*`** tag whose commit is **on the repository default branch** (`master` / `main` per GitHub settings) runs the WebGL job, then creates (or updates) a **GitHub Release** for that tag with **`GeoWorld-WebGL-<tag>.zip`** attached. Tags whose commit is not on the default branch fail the branch guard step so Netlify and Releases are not updated from stray tags. Pre-releases: tags whose name contains **`-`** (for example **`v1.0.0-rc.1`**) are marked **pre-release** on GitHub (heuristic; adjust the workflow if you use a different convention).
 
 The WebGL player output in CI is **`Build/WebGL/GeoWorld/`** (platform folder + `buildName`; see `.github/workflows/webgl-netlify.yml`). Netlify must publish **that** folder so `index.html` is at the site root—publishing only `Build/WebGL/` leaves a nested folder and yields a **Page not found** on `/`. Root [`netlify.toml`](netlify.toml) sets caching and compression-related headers for typical Unity WebGL files. If you use **Brotli/Gzip** compression and the build still fails to load, enable **Player Settings → Publishing Settings → Decompression Fallback** (see Unity’s WebGL hosting docs), or adjust headers to match your exact output filenames.
 

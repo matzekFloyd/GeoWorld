@@ -1,0 +1,56 @@
+# Compile + link gate on every PR and branch push (no WebGL / no deploy).
+# Uses GameCI unity-builder (same license secrets as WebGL workflow).
+# StandaloneLinux64 is used as a faster CI smoke build than WebGL; it still
+# exercises a full player build. When EditMode/PlayMode tests are added
+# (com.unity.test-framework + tests), extend this workflow with game-ci/unity-test-runner.
+
+name: Unity CI
+
+concurrency:
+  group: unity-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  pull_request:
+    branches:
+      - master
+      - main
+  push:
+    branches:
+      - master
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  build-linux-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Cache Library
+        uses: actions/cache@v4
+        with:
+          path: Library
+          key: Library-Linux64-${{ runner.os }}-${{ hashFiles('Packages/manifest.json', 'Packages/packages-lock.json', 'ProjectSettings/ProjectVersion.txt') }}
+          restore-keys: |
+            Library-Linux64-${{ runner.os }}-
+            Library-Linux64-
+
+      - name: Build StandaloneLinux64 (game-ci)
+        uses: game-ci/unity-builder@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          targetPlatform: StandaloneLinux64
+          unityVersion: auto
+          buildsPath: Build
+          buildName: LinuxSmoke
