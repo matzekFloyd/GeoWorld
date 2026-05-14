@@ -32,7 +32,7 @@ public static class BattleLog
     static Rect s_lastSafeArea;
     static float s_lastCanvasPixelW = -1f;
 
-    static readonly Dictionary<int, float> s_lightEnemyHitLogTime = new Dictionary<int, float>(96);
+    static readonly Dictionary<EntityId, float> s_lightEnemyHitLogTime = new Dictionary<EntityId, float>(96);
     const float LightEnemyHitLogInterval = 0.28f;
 
     static readonly StringBuilder s_sb = new StringBuilder(2048);
@@ -161,7 +161,7 @@ public static class BattleLog
 
     static bool ShouldLogLightEnemyHitNow(Transform enemyRoot)
     {
-        int id = enemyRoot.gameObject.GetInstanceID();
+        EntityId id = enemyRoot.gameObject.GetEntityId();
         float t = Time.unscaledTime;
         if (s_lightEnemyHitLogTime.TryGetValue(id, out float last) && t - last < LightEnemyHitLogInterval)
             return false;
@@ -174,7 +174,7 @@ public static class BattleLog
     {
         if (go == null)
             return;
-        s_lightEnemyHitLogTime.Remove(go.GetInstanceID());
+        s_lightEnemyHitLogTime.Remove(go.GetEntityId());
     }
 
     static void PruneEnemyThrottleMap()
@@ -182,7 +182,7 @@ public static class BattleLog
         if (s_lightEnemyHitLogTime.Count <= 140)
             return;
         float t = Time.unscaledTime;
-        var remove = new List<int>(32);
+        var remove = new List<EntityId>(32);
         foreach (var kv in s_lightEnemyHitLogTime)
         {
             if (t - kv.Value > 4f)
