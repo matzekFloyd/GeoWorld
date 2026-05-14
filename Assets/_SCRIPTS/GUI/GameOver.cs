@@ -3,6 +3,7 @@ using System.Collections;
 using UnityEngine.UI;
 
 using UnityEngine.SceneManagement;
+using UnityEngine.InputSystem;
 #if UNITY_EDITOR
 using UnityEditor;
 #endif
@@ -16,6 +17,12 @@ public class GameOver : MonoBehaviour {
 
     [Tooltip("Optional tuning asset. Create via Assets → Create → GeoWorld → Game Balance.")]
     [SerializeField] private GameBalance gameBalance;
+
+    [Tooltip("Reload this scene for \"Play again\" (must be in Build Settings).")]
+    [SerializeField] string gameplaySceneName = "GeoWorldMain";
+
+    [Tooltip("Title scene for \"return to title\" (must be in Build Settings).")]
+    [SerializeField] string titleSceneName = "Start";
 
     private GameObject player;
     private PlayerCharacter m_Player;
@@ -167,6 +174,10 @@ public class GameOver : MonoBehaviour {
                 if (m_BossHudCounter != null) m_BossHudCounter.enabled = false;
             }
 
+            // With Time.timeScale = 0, the Input System may not advance action phases every frame unless we tick it.
+            if (Time.timeScale < 0.01f)
+                InputSystem.Update();
+
             string title = playerDied ? "Game Over! You died!" : "Congratulations! You saved GeoWorld!";
             if (ShouldRefreshEndGameScoreboard(title))
             {
@@ -176,7 +187,7 @@ public class GameOver : MonoBehaviour {
                 RememberEndGameScoreboardState(title);
             }
 
-            HandleQuitRequest();
+            HandlePostRoundInput();
         }
         else
         {
@@ -301,16 +312,31 @@ public class GameOver : MonoBehaviour {
     void SetQuitInstructions()
     {
         if (pressButtonToCloseGame == null) return;
-#if UNITY_WEBGL && !UNITY_EDITOR
-        pressButtonToCloseGame.text = "Thanks for playing! You can close this browser tab.";
+#if UNITY_EDITOR
+        pressButtonToCloseGame.text = "Enter: Play again   B: Title screen   Esc: Exit play mode";
+#elif UNITY_WEBGL && !UNITY_EDITOR
+        pressButtonToCloseGame.text = "Enter: Play again   B: Title screen\nEsc: Close this tab (browser UI).";
 #else
-        pressButtonToCloseGame.text = "Press 'esc' to close the Game";
+        pressButtonToCloseGame.text = "Enter: Play again   B: Title screen   Esc: Quit";
 #endif
     }
 
-    void HandleQuitRequest()
+    void HandlePostRoundInput()
     {
-        if (!GameInput.PauseOrQuitUp) return;
+        if (GameInput.PostRoundReplayUp)
+        {
+            LoadSceneResumingTime(gameplaySceneName);
+            return;
+        }
+
+        if (GameInput.PostRoundTitleUp)
+        {
+            LoadSceneResumingTime(titleSceneName);
+            return;
+        }
+
+        if (!GameInput.PauseOrQuitUp)
+            return;
 #if UNITY_EDITOR
         EditorApplication.ExitPlaymode();
 #elif UNITY_WEBGL
@@ -318,6 +344,18 @@ public class GameOver : MonoBehaviour {
 #else
         Application.Quit();
 #endif
+    }
+
+    void LoadSceneResumingTime(string sceneName)
+    {
+        if (string.IsNullOrWhiteSpace(sceneName))
+        {
+            Debug.LogWarning("GeoWorld: GameOver scene name is empty; cannot load scene.");
+            return;
+        }
+
+        Time.timeScale = 1f;
+        SceneManager.LoadScene(sceneName);
     }
 
 

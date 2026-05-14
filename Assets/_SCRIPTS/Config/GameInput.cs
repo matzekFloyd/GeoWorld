@@ -22,6 +22,8 @@ public static class GameInput
     static InputAction s_SkillFreezeTime;
     static InputAction s_PauseOrQuit;
     static InputAction s_DebugLevelUp;
+    static InputAction s_PostRoundReplay;
+    static InputAction s_PostRoundTitle;
 
     static int s_HudFpFirePrimary = int.MinValue;
     static int s_HudFpSecondaryFire = int.MinValue;
@@ -93,6 +95,8 @@ public static class GameInput
         s_SkillFreezeTime = s_Gameplay.FindAction("SkillFreezeTime");
         s_PauseOrQuit = s_Gameplay.FindAction("PauseOrQuit");
         s_DebugLevelUp = s_Gameplay.FindAction("DebugLevelUp");
+        s_PostRoundReplay = s_Gameplay.FindAction("PostRoundReplay");
+        s_PostRoundTitle = s_Gameplay.FindAction("PostRoundTitle");
 
         s_Gameplay.Enable();
     }
@@ -264,6 +268,26 @@ public static class GameInput
         {
             Ensure();
             return s_PauseOrQuit != null && s_PauseOrQuit.WasReleasedThisFrame();
+        }
+    }
+
+    /// <summary>After round end: reload gameplay (default <c>Enter</c>).</summary>
+    public static bool PostRoundReplayUp
+    {
+        get
+        {
+            Ensure();
+            return s_PostRoundReplay != null && s_PostRoundReplay.WasReleasedThisFrame();
+        }
+    }
+
+    /// <summary>After round end: return to title scene (default <c>B</c>).</summary>
+    public static bool PostRoundTitleUp
+    {
+        get
+        {
+            Ensure();
+            return s_PostRoundTitle != null && s_PostRoundTitle.WasReleasedThisFrame();
         }
     }
 
