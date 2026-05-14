@@ -247,6 +247,16 @@ public class PlayerCharacter : BaseCharacter {
             maxMana = 1f;
     }
 
+    /// <summary>Passive regen applies tiny per-frame gains; keep those off the crosshair readout.</summary>
+    const float HealReadoutMinPositiveChunk = 0.45f;
+
+    public override void changeCurrentHealth(float change)
+    {
+        base.changeCurrentHealth(change);
+        if (change >= HealReadoutMinPositiveChunk)
+            GameplayHudView.Instance?.NotifyRecentHeal(change);
+    }
+
     public float calculateManaRegeneration(int curLevel)
     {
         // Stronger per-level growth than the post-nerf linear-only curve; mild L² so high levels keep pace with skill costs.

@@ -5,7 +5,7 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// uGUI gameplay HUD (bars, skill columns, crosshair, vignettes, bottom-right battle log). Built at runtime as a child of the
+/// uGUI gameplay HUD (bars, skill columns, crosshair, recent combat readout by crosshair, vignettes, bottom-right battle log). Built at runtime as a child of the
 /// object that hosts <see cref="UserInterface"/> unless you wire references manually in the Inspector.
 /// Fullscreen skill feedback renders above the low-health vignette.
 /// </summary>
@@ -26,6 +26,9 @@ public sealed class GameplayHudView : MonoBehaviour
     const float HealFreezeOverlayFadeIn = 0.2f;
     const float HealFreezeOverlayFadeOut = 0.3f;
 
+    const float CrosshairRecentCombatWindowSeconds = 2.25f;
+    const float CrosshairRecentCombatFadeOutSeconds = 0.4f;
+
     Canvas _canvas;
     Text _classTitleText;
     Text _levelText;
@@ -36,6 +39,12 @@ public sealed class GameplayHudView : MonoBehaviour
     Image _expFill;
     Text _expValueText;
     Image _crosshair;
+    Text _crosshairRecentDamage;
+    Text _crosshairRecentHeal;
+    float _recentDamageSum;
+    float _recentDamageExpireUnscaled;
+    float _recentHealSum;
+    float _recentHealExpireUnscaled;
     Image _bloodVignette;
     Image _fxHeal;
     Image _fxBloodA;
@@ -135,6 +144,7 @@ public sealed class GameplayHudView : MonoBehaviour
         BattleLog.ProcessToggleHotkey();
         BattleLog.TickSafeAreaLayout();
         TickFullscreenOverlayFades();
+        TickCrosshairRecentCombatReadout();
     }
 
     /// <summary>Creates default uGUI under this GameObject if not already built.</summary>
@@ -184,6 +194,7 @@ public sealed class GameplayHudView : MonoBehaviour
 
         BuildBattleLog(canvasRt);
         BuildDamageNumbersHost(canvasRt);
+        BuildCrosshairRecentCombatReadout(canvasRt);
 
         _built = true;
         ClearStringCache();
@@ -207,6 +218,14 @@ public sealed class GameplayHudView : MonoBehaviour
         _fxFreezeAlpha = 0f;
         _fxFreezeTex = null;
         _fxFreezeSpriteSource = null;
+        _recentDamageSum = 0f;
+        _recentHealSum = 0f;
+        _recentDamageExpireUnscaled = 0f;
+        _recentHealExpireUnscaled = 0f;
+        if (_crosshairRecentDamage != null)
+            _crosshairRecentDamage.gameObject.SetActive(false);
+        if (_crosshairRecentHeal != null)
+            _crosshairRecentHeal.gameObject.SetActive(false);
         _lastHealthTxt = _lastManaTxt = _lastExpTxt = null;
         _lastHealthFill = _lastManaFill = _lastExpFill = -1f;
         _lastHealthOverhealTint = -1;
@@ -302,6 +321,28 @@ public sealed class GameplayHudView : MonoBehaviour
         _fxFreezeTargetOn = on;
         if (tex != null)
             _fxFreezeTex = tex;
+    }
+
+    /// <summary>Adds to the rolling crosshair-adjacent damage readout (enemy/missile hits).</summary>
+    public void NotifyRecentDamageTaken(float amount)
+    {
+        if (!_built || amount <= 0.0001f)
+            return;
+        float now = Time.unscaledTime;
+        _recentDamageSum += amount;
+        _recentDamageExpireUnscaled = Mathf.Max(_recentDamageExpireUnscaled, now + CrosshairRecentCombatWindowSeconds);
+        TickCrosshairRecentCombatReadout();
+    }
+
+    /// <summary>Adds to the rolling crosshair-adjacent heal readout (Heal skill casts).</summary>
+    public void NotifyRecentHeal(float amount)
+    {
+        if (!_built || amount <= 0.0001f)
+            return;
+        float now = Time.unscaledTime;
+        _recentHealSum += amount;
+        _recentHealExpireUnscaled = Mathf.Max(_recentHealExpireUnscaled, now + CrosshairRecentCombatWindowSeconds);
+        TickCrosshairRecentCombatReadout();
     }
 
     /// <summary>Brief non-flashing edge + center tint when the player takes damage (accessibility-friendly caps).</summary>
@@ -667,6 +708,14 @@ public sealed class GameplayHudView : MonoBehaviour
             }
             DeactivateBloodRitualFxImages();
             DeactivateHealFreezeOverlayImages();
+            _recentDamageSum = 0f;
+            _recentHealSum = 0f;
+            _recentDamageExpireUnscaled = 0f;
+            _recentHealExpireUnscaled = 0f;
+            if (_crosshairRecentDamage != null)
+                _crosshairRecentDamage.gameObject.SetActive(false);
+            if (_crosshairRecentHeal != null)
+                _crosshairRecentHeal.gameObject.SetActive(false);
             _lastHealthOverhealTint = -1;
             _lastManaOvermanaTint = -1;
             return;
@@ -1378,6 +1427,119 @@ public sealed class GameplayHudView : MonoBehaviour
         var le = t.gameObject.AddComponent<LayoutElement>();
         le.preferredHeight = 17f;
         return t;
+    }
+
+    void BuildCrosshairRecentCombatReadout(RectTransform canvas)
+    {
+        _crosshairRecentDamage = CreateCrosshairCombatReadoutText(
+            canvas,
+            "RecentDmg",
+            TextAnchor.MiddleRight,
+            new Vector2(-40f, 48f),
+            new Vector2(1f, 0.5f),
+            new Vector2(240f, 44f),
+            new Color(1f, 0.38f, 0.34f));
+        _crosshairRecentHeal = CreateCrosshairCombatReadoutText(
+            canvas,
+            "RecentHeal",
+            TextAnchor.MiddleLeft,
+            new Vector2(40f, 48f),
+            new Vector2(0f, 0.5f),
+            new Vector2(240f, 44f),
+            new Color(0.35f, 0.95f, 0.55f));
+        _crosshairRecentDamage.transform.SetAsLastSibling();
+        _crosshairRecentHeal.transform.SetAsLastSibling();
+    }
+
+    Text CreateCrosshairCombatReadoutText(
+        RectTransform canvas,
+        string name,
+        TextAnchor alignment,
+        Vector2 anchoredPosition,
+        Vector2 pivot,
+        Vector2 sizeDelta,
+        Color rgb)
+    {
+        var go = CreateUIObject(name, canvas.transform);
+        var rt = go.GetComponent<RectTransform>();
+        rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+        rt.pivot = pivot;
+        rt.sizeDelta = sizeDelta;
+        rt.anchoredPosition = anchoredPosition;
+
+        var t = go.AddComponent<Text>();
+        t.font = UiFont;
+        t.text = "";
+        t.fontSize = 24;
+        t.alignment = alignment;
+        t.fontStyle = FontStyle.Bold;
+        t.color = new Color(rgb.r, rgb.g, rgb.b, 1f);
+        t.horizontalOverflow = HorizontalWrapMode.Overflow;
+        t.verticalOverflow = VerticalWrapMode.Overflow;
+        t.raycastTarget = false;
+        t.alignByGeometry = true;
+        var outline = go.AddComponent<Outline>();
+        outline.effectColor = new Color(0f, 0f, 0f, 0.75f);
+        outline.effectDistance = new Vector2(1.25f, -1.25f);
+        outline.useGraphicAlpha = true;
+        go.SetActive(false);
+        return t;
+    }
+
+    void TickCrosshairRecentCombatReadout()
+    {
+        if (!_built)
+            return;
+        float now = Time.unscaledTime;
+        TickCrosshairReadoutSide(_crosshairRecentDamage, ref _recentDamageSum, ref _recentDamageExpireUnscaled, true, now);
+        TickCrosshairReadoutSide(_crosshairRecentHeal, ref _recentHealSum, ref _recentHealExpireUnscaled, false, now);
+    }
+
+    static void TickCrosshairReadoutSide(Text t, ref float sum, ref float expireAt, bool isDamage, float now)
+    {
+        if (t == null)
+            return;
+
+        if (sum <= 0.01f)
+        {
+            if (now >= expireAt)
+                t.gameObject.SetActive(false);
+            return;
+        }
+
+        if (now >= expireAt)
+        {
+            sum = 0f;
+            t.gameObject.SetActive(false);
+            return;
+        }
+
+        int n = Mathf.RoundToInt(sum);
+        if (n < 1 && sum > 0.05f)
+            n = 1;
+        t.text = isDamage ? ("-" + n) : ("+" + n);
+
+        float rem = expireAt - now;
+        float a = rem <= CrosshairRecentCombatFadeOutSeconds
+            ? Mathf.Clamp01(rem / Mathf.Max(0.02f, CrosshairRecentCombatFadeOutSeconds))
+            : 1f;
+        var c = t.color;
+        if (isDamage)
+        {
+            c.r = 1f;
+            c.g = 0.38f;
+            c.b = 0.34f;
+        }
+        else
+        {
+            c.r = 0.35f;
+            c.g = 0.95f;
+            c.b = 0.55f;
+        }
+        c.a = a;
+        t.color = c;
+        t.gameObject.SetActive(true);
+        t.transform.SetAsLastSibling();
     }
 
     static Image CreateCrosshair(RectTransform canvas)
