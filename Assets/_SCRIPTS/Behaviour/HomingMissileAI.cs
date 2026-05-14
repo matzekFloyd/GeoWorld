@@ -12,8 +12,16 @@ public class HomingMissileAI : MonoBehaviour {
     public float bigMissileDmg;
 
     Coroutine _lifetimeRoutine;
+    float _freezeTimer;
+
+    /// <summary>While positive, no homing movement or impact damage (Freeze Time). Re-applying uses the longer of current and new duration.</summary>
+    public void ApplyFreeze(float seconds)
+    {
+        _freezeTimer = Mathf.Max(_freezeTimer, Mathf.Max(0f, seconds));
+    }
 
     void OnEnable () {
+        _freezeTimer = 0f;
         target = GameObject.FindGameObjectWithTag("Player1");
 
         dmgDistance = 5;
@@ -28,6 +36,7 @@ public class HomingMissileAI : MonoBehaviour {
 
     void OnDisable()
     {
+        _freezeTimer = 0f;
         if (_lifetimeRoutine != null)
         {
             StopCoroutine(_lifetimeRoutine);
@@ -49,6 +58,13 @@ public class HomingMissileAI : MonoBehaviour {
         var pc = target.GetComponent<PlayerCharacter>();
         if (pc == null)
             return;
+
+        if (_freezeTimer > 0f)
+        {
+            _freezeTimer -= Time.deltaTime;
+            return;
+        }
+
         int lv = Mathf.Max(1, pc.getCurLevel());
 
         smallMissileDmg = pc.getCurLevel() * 22f;

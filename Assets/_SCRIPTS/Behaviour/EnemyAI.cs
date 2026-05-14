@@ -193,7 +193,13 @@ public class EnemyAI : MonoBehaviour {
 
     private void attack()
     {
-        if (currentlyAbleToAttack && freezeFinished)
+        bool canMelee =
+            currentlyAbleToAttack
+            && freezeFinished
+            && freezeTimer <= 0.0001f
+            && state == State.Attack;
+
+        if (canMelee)
         {
             var pcHealth = target.GetComponent<PlayerCharacter>();
             if (pcHealth != null)
@@ -328,8 +334,13 @@ public class EnemyAI : MonoBehaviour {
 
     public void freeze(float duration)
     {
-
-        freezeTimer = duration;
+        freezeTimer = Mathf.Max(0.02f, duration);
+        freezeFinished = false;
+        currentlyAbleToAttack = false;
+        if (coolDown > 0.02f)
+            attackTimer = Mathf.Max(attackTimer, coolDown);
+        else
+            attackTimer = Mathf.Max(attackTimer, 0.35f);
 
             this.gameObject.GetComponent<Rigidbody>().constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationY | RigidbodyConstraints.FreezeRotationZ |
                                                          RigidbodyConstraints.FreezePositionX | RigidbodyConstraints.FreezePositionY | RigidbodyConstraints.FreezePositionZ;
