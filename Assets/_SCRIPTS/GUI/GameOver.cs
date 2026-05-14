@@ -8,6 +8,10 @@ using UnityEditor;
 #endif
 
 
+/// <summary>
+/// Round timer, kill counters, end-game UI. Updates <see cref="GameSession"/> each frame so other systems
+/// do not need to reference this type for “run still active” checks.
+/// </summary>
 public class GameOver : MonoBehaviour {
 
     [Tooltip("Optional tuning asset. Create via Assets → Create → GeoWorld → Game Balance.")]
@@ -51,9 +55,11 @@ public class GameOver : MonoBehaviour {
         gameTimeIsOver = false;
         GameBalanceHelper.Register(gameBalance);
         timeLeft = GameBalanceHelper.RoundDurationSeconds;
+        GameSession.EnsureForScene();
         player = GameObject.FindGameObjectWithTag("Player1");
         if (player != null)
             m_Player = player.GetComponent<PlayerCharacter>();
+        GameSession.Instance?.SyncRunState(playerDied, gameTimeIsOver);
         EnsureBossHudCounter();
         LayoutTopRightHudCounters();
     }
@@ -75,9 +81,10 @@ public class GameOver : MonoBehaviour {
     {
         if (m_BossScoreboardCounter != null)
             return;
-        if (scoreBoardTextGreaterEnemies == null)
+        var template = scoreBoardTextEnemies != null ? scoreBoardTextEnemies : scoreBoardTextGreaterEnemies;
+        if (template == null)
             return;
-        var go = Instantiate(scoreBoardTextGreaterEnemies.gameObject, scoreBoardTextGreaterEnemies.transform.parent);
+        var go = Instantiate(template.gameObject, template.transform.parent);
         go.name = "BossScoreboardLine";
         m_BossScoreboardCounter = go.GetComponent<Text>();
     }
@@ -128,6 +135,8 @@ public class GameOver : MonoBehaviour {
             playerDied = true;
         }
 
+        GameSession.Instance?.SyncRunState(playerDied, gameTimeIsOver);
+
         if (playerDied || gameTimeIsOver)
         {
             if (!m_TimeFrozen)
@@ -146,6 +155,7 @@ public class GameOver : MonoBehaviour {
                 ApplyEndGameUi("Congratulations! You saved GeoWorld!");
 
             SetQuitInstructions();
+            LayoutEndGameScoreboardAndQuit();
             HandleQuitRequest();
         }
         else
@@ -183,6 +193,62 @@ public class GameOver : MonoBehaviour {
         }
         if (gameOverText != null)
             gameOverText.text = title;
+    }
+
+    /// <summary>
+    /// Vertical order: Enemies killed → Bosses defeated → Greater enemies killed → quit instruction (last).
+    /// Called after <see cref="SetQuitInstructions"/> so the final line shows the key/tab message.
+    /// </summary>
+    void LayoutEndGameScoreboardAndQuit()
+    {
+        if (scoreBoardTextEnemies == null)
+            return;
+
+        var refRt = scoreBoardTextEnemies.rectTransform;
+        float x = refRt.anchoredPosition.x;
+        float y = refRt.anchoredPosition.y;
+        const float gap = 6f;
+
+        void PlaceStatLine(Text line)
+        {
+            if (line == null)
+                return;
+            var rt = line.rectTransform;
+            MatchScoreboardStatLayout(rt, refRt);
+            rt.anchoredPosition = new Vector2(x, y);
+            y -= PreferredScoreboardLineHeight(line) + gap;
+        }
+
+        PlaceStatLine(scoreBoardTextEnemies);
+        PlaceStatLine(m_BossScoreboardCounter);
+        PlaceStatLine(scoreBoardTextGreaterEnemies);
+
+        if (pressButtonToCloseGame == null)
+            return;
+
+        var pr = pressButtonToCloseGame.rectTransform;
+        pr.anchorMin = refRt.anchorMin;
+        pr.anchorMax = refRt.anchorMax;
+        pr.pivot = refRt.pivot;
+        pr.anchoredPosition = new Vector2(x, y);
+    }
+
+    static void MatchScoreboardStatLayout(RectTransform line, RectTransform reference)
+    {
+        line.anchorMin = reference.anchorMin;
+        line.anchorMax = reference.anchorMax;
+        line.pivot = reference.pivot;
+        line.sizeDelta = reference.sizeDelta;
+    }
+
+    static float PreferredScoreboardLineHeight(Text line)
+    {
+        if (line == null)
+            return 32f;
+        float h = LayoutUtility.GetPreferredHeight(line.rectTransform);
+        if (h > 2f)
+            return h;
+        return Mathf.Max(line.fontSize * 1.35f, 28f);
     }
 
     void SetQuitInstructions()

@@ -84,7 +84,7 @@ public class FreezeTime : SkillBasic
         var hud = GameplayHudView.Instance;
         if (hud == null)
             return;
-        bool on = showFreezeTexture && m_GameOver != null && !m_GameOver.playerDied && !m_GameOver.gameTimeIsOver;
+        bool on = showFreezeTexture && CanUseSkills();
         hud.ConfigureFreezeFx(on, freezeTexture);
     }
 

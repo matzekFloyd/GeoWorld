@@ -2,7 +2,7 @@ using UnityEngine;
 
 /// <summary>
 /// Central tuning data. Create via Assets → Create → GeoWorld → Game Balance,
-/// then assign it on the GameObject that has <see cref="GameOver"/> (same object is fine).
+/// then assign it on the GameObject that has <see cref="GameOver"/> (same object as the round UI is fine).
 /// If unassigned, <see cref="GameBalanceHelper"/> uses conservative built-in defaults for spawn counts.
 /// </summary>
 [CreateAssetMenu(fileName = "GameBalance", menuName = "GeoWorld/Game Balance", order = 0)]

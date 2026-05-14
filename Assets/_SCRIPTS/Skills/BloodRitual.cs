@@ -69,7 +69,7 @@ public class BloodRitual : SkillBasic{
         var hud = GameplayHudView.Instance;
         if (hud == null)
             return;
-        bool on = showBloodStain && m_GameOver != null && !m_GameOver.playerDied && !m_GameOver.gameTimeIsOver;
+        bool on = showBloodStain && CanUseSkills();
         hud.ConfigureBloodRitualFx(on, bloodRitualTexture1, bloodRitualTexture2);
     }
 
