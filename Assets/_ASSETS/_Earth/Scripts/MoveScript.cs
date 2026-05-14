@@ -26,14 +26,14 @@ namespace DigitalRuby.Earth
 
         private void Update()
         {
-            float move = Input.GetAxis("Vertical");
+            float move = GeoWorldInputCompat.GetAxis("Vertical", false);
             transform.position += (transform.forward * Speed * Time.deltaTime * move);
-            move = Input.GetAxis("Horizontal");
+            move = GeoWorldInputCompat.GetAxis("Horizontal", false);
             transform.position += (transform.right * Speed * Time.deltaTime * move);
 
-            var pitch = Input.GetAxis("Mouse Y") * -150.0f * Time.deltaTime;
-            var yaw = Input.GetAxis("Mouse X") * 150.0f * Time.deltaTime;
-            var roll = (Input.GetMouseButton(1) ? yaw : 0.0f);
+            var pitch = GeoWorldInputCompat.GetAxis("Mouse Y", false) * -150.0f * Time.deltaTime;
+            var yaw = GeoWorldInputCompat.GetAxis("Mouse X", false) * 150.0f * Time.deltaTime;
+            var roll = (GeoWorldInputCompat.GetMouseButton(1) ? yaw : 0.0f);
             if (roll != 0.0f)
             {
                 yaw = 0.0f;

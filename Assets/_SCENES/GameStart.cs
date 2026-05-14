@@ -29,8 +29,7 @@ public class GameStart : MonoBehaviour
         if (Time.frameCount < m_InputEnabledFrame)
             return;
 
-        if (UnityEngine.Input.anyKeyDown || UnityEngine.Input.GetMouseButtonDown(0) ||
-            UnityEngine.Input.GetMouseButtonDown(1))
+        if (GeoWorldInputCompat.AnyKeyOrMouseButtonDownThisFrame())
         {
             GeoWorldSessionStart.NotifyGameplayStartingFromTitleScreen();
             SceneManager.LoadScene(gameplaySceneName);

@@ -2,6 +2,7 @@
 using UnityEditor;
 #endif
 using UnityEngine;
+using UnityEngine.InputSystem.UI;
 
 
 namespace UnityStandardAssets.CrossPlatformInput
@@ -35,7 +36,7 @@ namespace UnityStandardAssets.CrossPlatformInput
                     GameObject o = new GameObject("EventSystem");
 
                     o.AddComponent<UnityEngine.EventSystems.EventSystem>();
-                    o.AddComponent<UnityEngine.EventSystems.StandaloneInputModule>();
+                    o.AddComponent<InputSystemUIInputModule>();
                 }
             }
         }

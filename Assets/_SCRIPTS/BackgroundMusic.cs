@@ -84,8 +84,7 @@ public class BackgroundMusic : GameOver
 #if UNITY_WEBGL && !UNITY_EDITOR
         if (m_WaitingForFirstGesture)
         {
-            if (UnityEngine.Input.anyKeyDown || UnityEngine.Input.GetMouseButtonDown(0) ||
-                UnityEngine.Input.GetMouseButtonDown(1))
+            if (GeoWorldInputCompat.AnyKeyOrMouseButtonDownThisFrame())
             {
                 a.Play();
                 m_WaitingForFirstGesture = false;

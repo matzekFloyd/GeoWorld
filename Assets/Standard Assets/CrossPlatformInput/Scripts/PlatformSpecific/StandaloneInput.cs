@@ -7,25 +7,25 @@ namespace UnityStandardAssets.CrossPlatformInput.PlatformSpecific
     {
         public override float GetAxis(string name, bool raw)
         {
-            return raw ? Input.GetAxisRaw(name) : Input.GetAxis(name);
+            return GeoWorldInputCompat.GetAxis(name, raw);
         }
 
 
         public override bool GetButton(string name)
         {
-            return Input.GetButton(name);
+            return GeoWorldInputCompat.GetButton(name);
         }
 
 
         public override bool GetButtonDown(string name)
         {
-            return Input.GetButtonDown(name);
+            return GeoWorldInputCompat.GetButtonDown(name);
         }
 
 
         public override bool GetButtonUp(string name)
         {
-            return Input.GetButtonUp(name);
+            return GeoWorldInputCompat.GetButtonUp(name);
         }
 
 
@@ -73,7 +73,7 @@ namespace UnityStandardAssets.CrossPlatformInput.PlatformSpecific
 
         public override Vector3 MousePosition()
         {
-            return Input.mousePosition;
+            return GeoWorldInputCompat.MousePosition;
         }
     }
 }
