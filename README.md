@@ -4,6 +4,22 @@
 
 Unity **6** project (**6000.4.5f1**). A third-person style **survival / horde** prototype built around a **GeoMancer** player: manage health, mana, and XP on a timer while enemies scale with your level.
 
+## Controls & input
+
+**Expectations:** GeoWorld is **keyboard / mouse first**. The shipped default binding set is keyboard + mouse only; there is **no in-game remapping UI** yet.
+
+**Where bindings live (source / custom builds):** [`Assets/Resources/Input/GeoWorldInputActions.txt`](Assets/Resources/Input/GeoWorldInputActions.txt) — Unity **Input Actions** JSON (same format as a `.inputactions` export). Gameplay reads it through [`GameInput`](Assets/_SCRIPTS/Config/GameInput.cs) (`Resources` path `Input/GeoWorldInputActions`). Edit that file and rebuild to change keys or add paths (for example `<Gamepad>/buttonSouth` alongside `<Keyboard>/q` for a skill). Optional: use Unity’s Input Actions editor on a copy, then paste JSON back into that file.
+
+**Player settings:** **Edit → Project Settings → Player → Active Input Handling** should be **Input System Package (New)** (or **Both** only if something else still needs the legacy **Input Manager**). Standard Assets camera/movement use [`GeoWorldInputCompat`](Assets/Plugins/GeoWorldInputCompat.cs) so axes work without relying on the old manager alone.
+
+**WebGL (Netlify / itch browser builds):** Gameplay uses the **same New Input System asset** as desktop, not legacy `UnityEngine.Input` inside `GameInput`. If something feels wrong in the browser, confirm Active Input Handling above and see **WebGL: ship-ready behavior and hosting** (focus / autoplay / gesture). Older docs sometimes assumed WebGL + new Input System issues; this project standardizes on the JSON asset + compat layer.
+
+**Title screen:** [`GameStart`](Assets/_SCENES/GameStart.cs) advances on **keyboard key or mouse button** (`GeoWorldInputCompat.AnyKeyOrMouseButtonDownThisFrame`), not a full gamepad “any button” probe — keep that in mind for controller-first players until extended.
+
+**Follow-up (not implemented):** In-game **mouse look sensitivity** and **invert Y** — camera deltas are currently scaled inside `GeoWorldInputCompat` (`MouseAxisScale`); expose as settings in a later issue if you want player-facing sliders.
+
+_Step-by-step rebinding and the optional `.inputactions` round-trip are under **Changing default bindings** in **Tuning & configuration** below._ For **itch.io** or a **Netlify** site blurb, you can reuse the bold bullets in this section as plain text.
+
 ## What the game is
 
 - **Core loop**: Stay alive, kill waves of enemies, level up (up to **50** in current player logic), and survive until the round timer expires—or lose if health hits zero.
@@ -45,7 +61,7 @@ Enemy behaviour lives under `Assets/_SCRIPTS/Behaviour/` (`EnemyAI`, `GreaterEne
 | Asset / script | Purpose |
 |----------------|---------|
 | **`GameBalance`** (ScriptableObject) | Round length, spawn targets, greater/boss gates and cadence, boss telegraph, boss HP/XP/score tuning. See **Game Balance asset** below for creation, assignment, and **`GameBalanceHelper`** fallbacks. |
-| **`GameInput`** (`Assets/_SCRIPTS/Config/GameInput.cs`) | Façade over the **Input System**: loads JSON from **`Assets/Resources/Input/GeoWorldInputActions.txt`** via **`InputActionAsset.LoadFromJson`**. Exposes the same static API as before (`FirePrimaryDown`, skill `*Up`, `PauseOrQuitUp`, etc.). |
+| **`GameInput`** (`Assets/_SCRIPTS/Config/GameInput.cs`) | Façade over the **Input System**: loads JSON from **`Assets/Resources/Input/GeoWorldInputActions.txt`** via **`InputActionAsset.LoadFromJson`**. Exposes static gameplay accessors (`FirePrimaryHeld`, skill holds, `PauseOrQuitUp`, post-round actions, etc.). See **Controls & input** for player-facing expectations and WebGL. |
 
 ### Game Balance asset
 
@@ -95,13 +111,15 @@ Script: **`Assets/_SCRIPTS/BackgroundMusic.cs`**. Put **`BackgroundMusic`** on t
 - **Counters & score** (`GameOver`): **`bossKillCounter`** counts boss defeats separately from **`greaterEnemyKillCounter`** (greater-only, no boss). **`bossBonusScoreTotal`** accumulates **`bossScoreBonusOnKill`** per boss. **`enemyKillCounter`** still increments for every enemy death including bosses.
 - **XP**: `EnemyCharacter` applies **`bossExpMultiplier`** to `expOnKill`; death handlers add **`bossBonusXpFlat`** when `isBoss`.
 
-### Changing default bindings (keyboard / mouse)
+### Changing default bindings (keyboard / mouse / gamepad paths)
 
-1. Edit **`Assets/Resources/Input/GeoWorldInputActions.txt`**. It is standard **Input Actions** JSON (same format as a `.inputactions` file). Adjust paths under the **Gameplay** map’s **`bindings`** (e.g. **FirePrimary** → `<Mouse>/leftButton`, skills **Q/E/R/F**, **PauseOrQuit** → `<Keyboard>/escape`, **DebugLevelUp** → **T**, **PostRoundReplay** → `<Keyboard>/enter`, **PostRoundTitle** → `<Keyboard>/b`).
+See **Controls & input** at the top for expectations (keyboard/mouse-first, binding file path, WebGL, title screen). Steps:
+
+1. Edit **`Assets/Resources/Input/GeoWorldInputActions.txt`**. It is standard **Input Actions** JSON (same format as a `.inputactions` file). Adjust paths under the **Gameplay** map’s **`bindings`** (e.g. **FirePrimary** → `<Mouse>/leftButton`, skills **Q/E/R/F**, **PauseOrQuit** → `<Keyboard>/escape`, **DebugLevelUp** → **T**, **PostRoundReplay** → `<Keyboard>/enter`, **PostRoundTitle** → `<Keyboard>/b`). Add **`<Gamepad>/…`** paths here if you want controller parity with skills.
 2. Save the file. **`GameInput`** loads **`Resources`** path **`Input/GeoWorldInputActions`** at runtime; no code changes for rebinding.
 3. Optional: copy the JSON to a **`.inputactions`** file elsewhere in the project if you want Unity’s **Input Actions** visual editor, then paste changes back into **`GeoWorldInputActions.txt`** when done.
 4. **Player settings**: Set **Edit → Project Settings → Player → Other Settings → Active Input Handling** to **Input System Package (New)** (or **Both** only if you still need the old manager elsewhere). Standard Assets paths use **`GeoWorldInputCompat`** (`Assets/Plugins/GeoWorldInputCompat.cs`) so keyboard/mouse reads work without the legacy **Input Manager** backend.
-5. **WebGL**: **`GameInput`** uses the same **Input Actions** JSON as other platforms. If you hit input or audio quirks in the browser, test with **Both** temporarily and check the Unity issue tracker for your Editor version.
+5. **WebGL:** Same JSON and **`GameInput`** path as desktop; if you hit input or audio quirks in the browser, test with **Both** temporarily, confirm focus/autoplay notes in **WebGL: ship-ready behavior and hosting**, and check the Unity issue tracker for your Editor version.
 
 ## Repository layout
 
@@ -160,7 +178,7 @@ This section is the checklist for a **browser** build: loading, audio policy, fu
 | **Tab focus / visibility** | `WebGlShipReadyRuntime` (WebGL **player** builds only) sets `AudioListener.pause` from `OnApplicationPause` / `OnApplicationFocus` when the tab loses or regains focus. While **`GameSession.IsRunActive`** is true, it also sets **`Time.timeScale` to 0** until the tab is focused again, then restores the previous time scale (so the round timer and simulation do not run in the background). It does **not** change time scale when no run is active (title / game-over), so **`GameOver`** can keep `Time.timeScale` at 0 at end of round without this fighting it. |
 | **Background music & autoplay** | Browsers block **autoplay with sound** until a **user gesture**. If the player came from **`Start.unity`**, `GameStart` calls `GeoWorldSessionStart.NotifyGameplayStartingFromTitleScreen()` before loading **`GeoWorldMain`**, and `BackgroundMusic` tries `Play()` on the first gameplay frame, then falls back to “wait for key/mouse” if the clip still is not playing. If the first scene is **`GeoWorldMain`** (no title), `BackgroundMusic` still waits for the first **key** or **mouse button** in `Update`. |
 | **Quit / post-round** | After the round, **Enter** reloads gameplay and **B** returns to the title scene (see **`GameOver`**); **Escape** still exits play mode in the Editor, calls **`Application.Quit()`** on standalone, and on WebGL the UI explains closing the tab (no **`Application.Quit`**). |
-| **Input** | WebGL **player** builds use **legacy `Input` only** in `GameInput` to avoid WASM/JS re-entrancy with the new Input System (see **Tuning & configuration**). |
+| **Input** | WebGL **player** builds use the same **`GameInput`** Input Actions JSON as desktop (**New Input System**). Use **Active Input Handling** as in **Controls & input**; for browser quirks see this section and **Tuning & configuration**. |
 
 ### Fullscreen API (Unity template)
 
