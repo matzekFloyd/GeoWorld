@@ -10,7 +10,7 @@ public class GameStart : MonoBehaviour
 {
     [SerializeField] string gameplaySceneName = "GeoWorldMain";
     [SerializeField] string titleCopy = "GeoWorld";
-    [SerializeField] string promptCopy = "Press any key to start";
+    [SerializeField] string promptCopy = "Press any key or click to start";
     [Tooltip("Skip input for the first N frames so stray events from loading do not skip the title.")]
     [SerializeField] int ignoreInputFrames = 4;
 

@@ -12,7 +12,7 @@ Unity **6** project (**6000.4.5f1**). A third-person style **survival / horde** 
 
 Main scenes (under `Assets/_SCENES/`):
 
-- **`Start.unity`** — Title screen (**GeoWorld** / “Press any key to start”); `GameStart` loads **`GeoWorldMain`** on the first key or mouse button (see `Assets/_SCENES/GameStart.cs`). **Editor:** Unity’s Play button normally runs the **scene you have open**; this repo sets **`Start.unity`** as the default **Play Mode Start Scene** on domain reload (`Assets/Editor/GeoWorldPlayModeStartScene.cs`) so you still see the title flow while working on other scenes. To change that: **GeoWorld → Play Mode → Use currently open scene when pressing Play** (or **Project Settings → Editor → Play Mode** and assign another scene).
+- **`Start.unity`** — Title screen (**GeoWorld** / “Press any key or click to start”); `GameStart` loads **`GeoWorldMain`** on the first key or mouse button (see `Assets/_SCENES/GameStart.cs`). **Editor:** Unity’s Play button normally runs the **scene you have open**; this repo sets **`Start.unity`** as the default **Play Mode Start Scene** on domain reload (`Assets/Editor/GeoWorldPlayModeStartScene.cs`) so you still see the title flow while working on other scenes. To change that: **GeoWorld → Play Mode → Use currently open scene when pressing Play** (or **Project Settings → Editor → Play Mode** and assign another scene).
 - **`GeoWorldMain.unity`** — Primary gameplay scene.
 
 ## Gameplay systems (high level)
