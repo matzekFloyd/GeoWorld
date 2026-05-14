@@ -26,6 +26,15 @@ Thanks for helping improve the project. This repository is a **Unity 6** game pr
 
 - Not everything under **`Assets/`** is MIT-licensed. Respect licenses for **Standard Assets**, store packs, and other third-party content. When in doubt, ask before re-licensing or redistributing art/audio from those folders.
 
-## Questions
+## Polish backlog (GitHub)
 
-Open a **Discussion** or **Issue** on GitHub if you are unsure about scope or design before investing a large amount of time.
+Older notes lived in **`Assets/TO-DO.txt`**; items are now **GitHub issues** so progress is visible to contributors and on project boards.
+
+- **Index / mapping table:** [`Assets/TO-DO.txt`](Assets/TO-DO.txt) (short links to each issue).
+- **Migration checklist (closed when done):** [#53](https://github.com/matzekFloyd/GeoWorld/issues/53) — use this to see how each former bullet maps to an issue or descoped work.
+- **QoL umbrella:** [#43](https://github.com/matzekFloyd/GeoWorld/issues/43) (epic).
+- **Good first issue (polish starters):** [#80](https://github.com/matzekFloyd/GeoWorld/issues/80) (Blood Ritual mana bar over-max flash), [#83](https://github.com/matzekFloyd/GeoWorld/issues/83) (blood stain fade), or filter [open `good first issue`](https://github.com/matzekFloyd/GeoWorld/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22).
+
+When you finish a backlog item, **close the GitHub issue** and optionally trim or update `TO-DO.txt` if the table row is obsolete.
+
+## Questions
