@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Maintains desired living enemy counts from <see cref="GameBalanceHelper"/> vs <see cref="targets"/>.
+/// Maintains desired living enemy counts from <see cref="GameBalanceHelper.GetDesiredLivingEnemyCount"/> vs <see cref="targets"/>.
 /// </summary>
 /// <remarks>
 /// <para><b>Boss cadence</b> (also documented in README): when player level is at least
@@ -41,8 +41,11 @@ public class EnemyGenerator : MonoBehaviour
     public State state;
 
     [Header("Pooling / spawn burst")]
-    [Tooltip("Max normal enemies spawned per frame when catching up to level × enemiesPerLevel.")]
-    [SerializeField] int maxEnemySpawnsPerFrame = 16;
+    [Tooltip("Base max normal enemies spawned per frame when catching up to the desired living count.")]
+    [SerializeField] int maxEnemySpawnsPerFrameBase = 14;
+
+    [Tooltip("Added to the base each player level (spawn budget scales up in late game).")]
+    [SerializeField] int maxEnemySpawnsPerPlayerLevel = 1;
     [Tooltip("Inactive instances created at scene start per enemy prefab (reduces Instantiate spikes on first big spawn).")]
     [SerializeField] int prewarmInstancesPerEnemyPrefab = 24;
     [Tooltip("Inactive boss instances to keep ready (usually 0 or 1).")]
@@ -86,6 +89,9 @@ public class EnemyGenerator : MonoBehaviour
     {
         switch (state)
         {
+            case State.Idle:
+                MaybeRefillToDesiredCount();
+                break;
             case State.Initialize:
                 Initialize();
                 break;
@@ -112,19 +118,38 @@ public class EnemyGenerator : MonoBehaviour
         state = EnemyGenerator.State.SpawnEnemy;
     }
 
+    /// <summary>While idle, top up spawns when kills bring us under the level target (not only on level-up).</summary>
+    void MaybeRefillToDesiredCount()
+    {
+        if (m_Player == null || m_BossSpawnRoutineActive)
+            return;
+        var session = GameSession.Instance;
+        if (session != null && !session.IsRunActive)
+            return;
+        PruneNullTargets();
+        int desired = GameBalanceHelper.GetDesiredLivingEnemyCount(m_Player.getCurLevel());
+        if (targets.Count < desired)
+            state = State.SpawnEnemy;
+    }
+
+    void PruneNullTargets()
+    {
+        for (int i = targets.Count - 1; i >= 0; i--)
+        {
+            if (targets[i] == null)
+                targets.RemoveAt(i);
+        }
+    }
+
     void SpawnEnemy()
     {
         if (m_Player == null)
             return;
 
+        PruneNullTargets();
+
         int level = m_Player.getCurLevel();
-        int desiredEnemyCount;
-        if (level <= 1)
-            desiredEnemyCount = GameBalanceHelper.EnemiesAtPlayerLevel1;
-        else if (level == 2)
-            desiredEnemyCount = GameBalanceHelper.EnemiesAtPlayerLevel2;
-        else
-            desiredEnemyCount = level * GameBalanceHelper.EnemiesPerPlayerLevel;
+        int desiredEnemyCount = GameBalanceHelper.GetDesiredLivingEnemyCount(level);
         int currentEnemyCount = targets.Count;
 
         if (m_EnemySpawnRemaining == 0)
@@ -162,7 +187,8 @@ public class EnemyGenerator : MonoBehaviour
         }
 
         int spawnedThisFrame = 0;
-        while (m_EnemySpawnRemaining > 0 && spawnedThisFrame < maxEnemySpawnsPerFrame)
+        int spawnBudget = Mathf.Clamp(maxEnemySpawnsPerFrameBase + level * maxEnemySpawnsPerPlayerLevel, 8, 48);
+        while (m_EnemySpawnRemaining > 0 && spawnedThisFrame < spawnBudget)
         {
             int selectedSpawnPoint = m_EnemySpawnWaveIndex % spawnPointCount;
             var prefab = enemyPrefabs[Random.Range(0, enemyPrefabs.Length)];

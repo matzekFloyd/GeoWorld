@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
 
-[DefaultExecutionOrder(-50)]
+/// <summary>Runs after <see cref="EnemyAI"/> / <see cref="GreaterEnemyAI"/> OnEnable so level-based tuning is not overwritten.</summary>
+[DefaultExecutionOrder(50)]
 public class EnemyCharacter : BaseCharacter {
     
     private GameObject player;
@@ -53,15 +54,15 @@ public class EnemyCharacter : BaseCharacter {
 
         if (iAmGreaterEnemy)
         {
-            maxHealth = curPlayerLevel * 250 * Random.Range(20f, 30f);
+            maxHealth = curPlayerLevel * 215f * Random.Range(20f, 30f);
             curHealth = maxHealth;
-            expOnKill = curPlayerLevel * 300;
+            expOnKill = curPlayerLevel * 285f;
         }
         else
         {
-            maxHealth = curPlayerLevel * 25 * Random.Range(2f, 3f);
+            maxHealth = curPlayerLevel * 28f * Random.Range(2.1f, 3.1f);
             curHealth = maxHealth;
-            expOnKill = curPlayerLevel * 15;
+            expOnKill = curPlayerLevel * 15.5f;
         }
 
         if (isBoss)
@@ -71,15 +72,15 @@ public class EnemyCharacter : BaseCharacter {
             expOnKill *= GameBalanceHelper.BossExpMultiplier;
         }
 
-        //Bewegungsgeschwindigkeit der Gegner
-        EnemyAI enemyAI = this.gameObject.GetComponent<EnemyAI>();
-        if (enemyAI != null)
-        {
-            enemyAI.moveSpeed = Random.Range(7.5f, 20f);
-            enemyAI.rotationSpeed = Random.Range(5f, 15f);
-            enemyAI.damage = Random.Range(player.GetComponent<PlayerCharacter>().getCurLevel() * 7.5f, player.GetComponent<PlayerCharacter>().getCurLevel() * 12.5f);
-        }
+        int lv = Mathf.Max(1, Mathf.RoundToInt(curPlayerLevel));
 
+        var enemyAI = GetComponent<EnemyAI>();
+        if (enemyAI != null)
+            enemyAI.ApplyCombatTuning(lv, isBoss);
+
+        var greaterAi = GetComponent<GreaterEnemyAI>();
+        if (greaterAi != null)
+            greaterAi.ApplyCombatTuning(lv, isBoss);
     }
 
     public float getExpOnKill()

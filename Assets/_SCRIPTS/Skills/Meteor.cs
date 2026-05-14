@@ -19,7 +19,7 @@ public class Meteor : SkillBasic {
     {
         if (m_Player == null) return;
         maxCooldown = 40f / m_Player.getCurLevel();
-        manacost = m_Player.getCurLevel() * 12.5f;
+        manacost = 28f + m_Player.getCurLevel() * 26f;
         meteorDamage = m_Player.getCurLevel() * 50f;
         updateCoolDown();
 

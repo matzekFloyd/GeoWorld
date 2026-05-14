@@ -21,8 +21,9 @@ public class GeoShot : SkillBasic
     void Update()
     {
         if (m_Player == null) return;
-        manacost = m_Player.getCurLevel();
-        geoShotDmg = m_Player.getCurLevel() * 20f;
+        // Free primary: mana pool is for other skills after global regen nerf.
+        manacost = 0f;
+        geoShotDmg = m_Player.getCurLevel() * 18f;
         updateCoolDown();
         
         if (GameInput.FirePrimaryDown && requiredMana() && CanUseSkills())

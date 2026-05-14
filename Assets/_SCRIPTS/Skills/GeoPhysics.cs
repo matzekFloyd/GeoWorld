@@ -4,8 +4,20 @@ using UnityStandardAssets.Characters.FirstPerson;
 
 public class GeoPhysics : SkillBasic {
 
+    // Tuned movement / jump / gravity (applied while GeoPhysics skill is active).
+    const float WalkSpeedBase = 10f;
+    const float WalkSpeedPerLevel = 1.02f;
+    const float WalkSpeedMax = 31f;
+
+    const float JumpSpeedAtLevel1 = 11f;
+    const float JumpSpeedPerLevelAfter1 = 1.02f;
+    const float JumpSpeedMax = 46f;
+
+    const float GravityAtLowLevel = 2f;
+    const float GravityReductionPerLevel = 0.125f;
+    const float GravityMultiplierMin = 0.75f;
+
     private int curPlayerLevel;
-    private float geoHealthreg = 0.0f;
 
     FirstPersonController _firstPerson;
 
@@ -34,71 +46,29 @@ public class GeoPhysics : SkillBasic {
         _firstPerson.m_WalkSpeed = calculateMovementSpeedBuff(curPlayerLevel);
         _firstPerson.m_JumpSpeed = calculateJumpSpeedBuff(curPlayerLevel);
         _firstPerson.m_GravityMultiplier = calculateGravityMultiplier(curPlayerLevel);
-
-        m_Player.changeCurrentHealth(calculateHealthRegeneration(curPlayerLevel) * Time.deltaTime);
     }
 
 
 
     public float calculateMovementSpeedBuff(int playerLevel)
     {
-        float movementSpeed = 10;
-        int maxLevel = m_Player.getMaxLevel();
-
-        for (int i = 0; i <= maxLevel; i++)
-        {
-            if (playerLevel == i) movementSpeed = i + 10;
-        }
-
-        if (movementSpeed >= 30) movementSpeed = 30;
-
-        return movementSpeed;
+        return Mathf.Min(WalkSpeedBase + playerLevel * WalkSpeedPerLevel, WalkSpeedMax);
     }
 
     public float calculateJumpSpeedBuff(int playerLevel)
     {
-        float jumpSpeed = 8;
-        int maxLevel = m_Player.getMaxLevel();
-
-        for(int i = 0; i <= maxLevel; i++)
-        {
-            if (playerLevel == i) jumpSpeed = i + 10;
-        }
-
-        if (jumpSpeed >= 50) jumpSpeed = 50;
-
-        return jumpSpeed;
+        int lv = Mathf.Max(1, playerLevel);
+        float fromOne = JumpSpeedAtLevel1 + (lv - 1) * JumpSpeedPerLevelAfter1;
+        return Mathf.Min(fromOne, JumpSpeedMax);
     }
 
     public float calculateGravityMultiplier(int playerLevel)
     {
-        float gravityMultiplier = 1.85f;
-        int maxLevel = m_Player.getMaxLevel();
-
-        for (int i = 0; i <= maxLevel; i++)
-        {
-            if (playerLevel == i) gravityMultiplier = 2f - i * 0.125f;
-        }
-
-        if (gravityMultiplier <= 0.75f) gravityMultiplier = 0.75f;
-
-            return gravityMultiplier;
-    }
-
-    public float calculateHealthRegeneration(int playerLevel)
-    {
-        int maxLevel = m_Player.getMaxLevel();
-
-        for (int i = 0; i <= maxLevel; i++)
-        {
-            if (playerLevel == i) geoHealthreg = i * 0.5f;
-        }
-
-        return geoHealthreg;
+        return Mathf.Max(GravityMultiplierMin, GravityAtLowLevel - playerLevel * GravityReductionPerLevel);
     }
 
     public float getGeoPhysicsHealthReg()
     {
-        return geoHealthreg;
+        return m_Player != null ? m_Player.GetPassiveHealthRegenPerSecond() : 0f;
     }
 }

@@ -49,8 +49,13 @@ public class HomingMissileAI : MonoBehaviour {
         var pc = target.GetComponent<PlayerCharacter>();
         if (pc == null)
             return;
-        smallMissileDmg = pc.getCurLevel() * 30;
-        bigMissileDmg = pc.getCurLevel() * 100;
+        int lv = Mathf.Max(1, pc.getCurLevel());
+
+        smallMissileDmg = pc.getCurLevel() * 22f;
+        bigMissileDmg = pc.getCurLevel() * 72f;
+
+        rotationSpeed = Mathf.Clamp(9.5f + lv * 0.38f, 9.5f, 22f);
+        moveSpeed = Mathf.Clamp(40f + lv * 1.15f, 40f, 82f);
         charge(pc);
     }
 

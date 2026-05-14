@@ -39,7 +39,7 @@ public class FreezeTime : SkillBasic
         maxCooldown = 100 / m_Player.getCurLevel();
         freezeTextureTimerCooldown = 1.5f;
         duration = m_Player.getCurLevel() / 4f;
-        manacost = m_Player.getCurLevel() * 30;
+        manacost = 48f + m_Player.getCurLevel() * 38f;
         updateCoolDown();
 
 
