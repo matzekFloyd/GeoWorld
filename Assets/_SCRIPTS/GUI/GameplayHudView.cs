@@ -908,7 +908,8 @@ public sealed class GameplayHudView : MonoBehaviour
             source.singleShotTexture, source.sprayShotTexture, source.geoPhysicsTexture, source.healTexture,
             source.fireBallTexture, source.bloodRitualTexture, source.freezeTimeTexture, source.geoManiaTexture
         };
-        string[] keys = { "M1", "M2", "", "Q", "E", "R", "F", "" };
+        var keys = new string[8];
+        GameInput.FillSkillStripKeyLabels(keys);
 
         var columns = new SkillColumn[8];
         for (int i = 0; i < 8; i++)

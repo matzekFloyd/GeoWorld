@@ -105,14 +105,7 @@ public class UserInterface : MonoBehaviour
             GameplayHudView.SpriteFromTexture(expTexture));
         _frameSprite = GameplayHudView.SpriteFromTexture(frameTexture);
 
-        _keyLabels[0] = "M1";
-        _keyLabels[1] = "M2";
-        _keyLabels[2] = "";
-        _keyLabels[3] = "Q";
-        _keyLabels[4] = "E";
-        _keyLabels[5] = "R";
-        _keyLabels[6] = "F";
-        _keyLabels[7] = "";
+        GameInput.FillSkillStripKeyLabels(_keyLabels);
         CacheStaticSkillSprites();
     }
 
@@ -132,6 +125,8 @@ public class UserInterface : MonoBehaviour
     {
         if (m_Player == null || _hud == null)
             return;
+
+        GameInput.FillSkillStripKeyLabels(_keyLabels);
 
         curPlayerLevel = m_Player.getCurLevel();
         maxPlayerLevel = m_Player.getMaxLevel();
