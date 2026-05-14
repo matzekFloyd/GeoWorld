@@ -3,6 +3,9 @@ using UnityEngine;
 
 public class GeoShotProjectile : GeoShot{
 
+    /// <summary>Pooled projectile must not run <see cref="GeoShot.Update"/> (fire input, <see cref="GeoShot.camPos"/>).</summary>
+    void Update() { }
+
     GeoShot _ownerGeoShot;
     PlayerCharacter _ownerPlayer;
     bool _hit;

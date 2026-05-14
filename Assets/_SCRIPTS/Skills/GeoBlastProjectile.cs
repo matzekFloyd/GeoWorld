@@ -3,6 +3,9 @@ using UnityEngine;
 
 public class GeoBlastProjectile : GeoBlast
 {
+    /// <summary>Pooled projectile must not run <see cref="GeoBlast.Update"/> (fire input, <see cref="GeoBlast.camPos"/>).</summary>
+    void Update() { }
+
     GeoBlast _ownerGeoBlast;
     PlayerCharacter _ownerPlayer;
     bool _hit;
