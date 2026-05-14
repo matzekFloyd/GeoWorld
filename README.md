@@ -1,13 +1,15 @@
-# GeoWorld
+# 🌍 GeoWorld
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+Contributing and security: [`CONTRIBUTING.md`](CONTRIBUTING.md) · [`SECURITY.md`](SECURITY.md)
 
 Unity **6** project (**6000.4.5f1**). A third-person style **survival / horde** prototype built around a **GeoMancer** player: manage health, mana, and XP on a timer while enemies scale with your level.
 
 ## What the game is
 
 - **Core loop**: Stay alive, kill waves of enemies, level up (up to **50** in current player logic), and survive until the round timer expires—or lose if health hits zero.
-- **Round rules** (`GameOver`): countdown duration, spawn density, greater/boss thresholds, and boss multipliers come from **`GameBalance`** (ScriptableObject) when assigned; **defaults** match the old design (**900** s round, **`level × 22`** target living enemies from level 3+, greater from level **10+**, boss cadence when level is a multiple of **5** at or above that gate). Kill UI: **enemies** (all kills), **greater** (non-boss greater only), **bosses defeated** plus optional **boss bonus score**; game over on death or time up.
+- **Round rules** (`GameOver`): countdown, spawn targets, greater/boss gates, and boss encounter tuning come from a **`GameBalance`** asset when assigned on **`GameOver`**; if none is assigned, **`GameBalanceHelper`** applies built-in defaults (see **Game Balance asset** under **Tuning & configuration**). Kill UI: **enemies** (all kills), **greater** (non-boss greater only), **bosses defeated** plus optional **boss bonus score**; game over on death or time up.
 - **Fantasy hook**: Earth / “geo” themed skills (projectiles, blast, meteor, time freeze, blood ritual, heal, etc.) against spawned enemies including stronger variants and periodic **boss** spawns tied to level milestones (`EnemyGenerator`), with a telegraphed **boss incoming** moment (HUD banner + tint + optional SFX) before the boss entity appears.
 
 Main scenes (under `Assets/_SCENES/`):
@@ -26,7 +28,7 @@ Main scenes (under `Assets/_SCENES/`):
 | **`GameplayHudView`** | **`UnityEngine.UI`** Canvas built at runtime as a child **`GameplayHUD`** (see **Gameplay HUD** below). Hosts fullscreen skill flashes (heal / blood ritual / freeze), **boss incoming** telegraph overlay, and caches **`Sprite`** instances per texture. |
 | **`GameSession`** | Small façade: **`IsRunActive`**, **`Player`**. Created on the **`Player1`** object when **`GameOver.Start`** runs (and **`UserInterface.Start`** calls **`EnsureForScene`** early so HUD order is safe). **`GameOver`** calls **`SyncRunState`** each frame after updating death/time flags. |
 | **`GameOver`** | Timer from balance, kill UI (**Unity UI `Text`**, null-safe), end screens. End-of-round copy updates in **`Update`** (no **`OnGUI`**). **Escape** uses **`GameInput`**. **WebGL**: no **`Application.Quit`**; copy prompts the player to close the tab. Standalone/editor use quit or exit play mode as appropriate. |
-| **`BackgroundMusic`** | **`AudioSource`** loop; optional **`alternateTracks`** + random pick (pool includes **`backGroundMusic`** when set), **`playbackVolume`**. Stops when **`GameSession`** reports the run has ended (treats a missing session as “still playing” until **`GameOver`** has started). |
+| **`BackgroundMusic`** | Same GameObject as **`AudioSource`**: inspector **`backGroundMusic`**, **`alternateTracks`**, **`playbackVolume`**; random track rules in **Background music** under **Tuning & configuration**. Stops when **`GameSession`** reports the run has ended (treats a missing session as “still playing” until **`GameOver`** has started). |
 
 Enemy behaviour lives under `Assets/_SCRIPTS/Behaviour/` (`EnemyAI`, `GreaterEnemyAI`, `HomingMissileAI`, etc.).
 
@@ -40,13 +42,54 @@ Enemy behaviour lives under `Assets/_SCRIPTS/Behaviour/` (`EnemyAI`, `GreaterEne
 
 | Asset / script | Purpose |
 |----------------|---------|
-| **`GameBalance`** (`Assets → Create → GeoWorld → Game Balance`) | Round length, per-level spawn targets, greater/boss **gates** and **cadence**, boss **telegraph** (duration + screen tint alpha), boss HP/XP multipliers, **flat bonus XP** and **score per boss kill** (`bossBonusXpFlat`, `bossScoreBonusOnKill`). Assign on **`GameOver`**; if empty, **`GameBalanceHelper`** uses built-in defaults. |
+| **`GameBalance`** (ScriptableObject) | Round length, spawn targets, greater/boss gates and cadence, boss telegraph, boss HP/XP/score tuning. See **Game Balance asset** below for creation, assignment, and **`GameBalanceHelper`** fallbacks. |
 | **`GameInput`** (`Assets/_SCRIPTS/Config/GameInput.cs`) | Façade over the **Input System**: loads JSON from **`Assets/Resources/Input/GeoWorldInputActions.txt`** via **`InputActionAsset.LoadFromJson`**. Exposes the same static API as before (`FirePrimaryDown`, skill `*Up`, `PauseOrQuitUp`, etc.). |
+
+### Game Balance asset
+
+**Create:** In the Unity Editor, **Assets → Create → GeoWorld → Game Balance**. This creates a **`GameBalance`** asset (see `Assets/_SCRIPTS/Config/GameBalance.cs`).
+
+**Assign:** On the GameObject that has **`GameOver`** (same object as the round UI / HUD host in **`GeoWorldMain`** is typical), set the Inspector field **`gameBalance`** / **Game Balance** to that asset. At runtime, **`GameOver.Start`** calls **`GameBalanceHelper.Register(gameBalance)`** (`Assets/_SCRIPTS/GUI/GameOver.cs`).
+
+**When unassigned:** `GameBalanceHelper.Active` is **null**. All reads go through **`GameBalanceHelper`** static getters in `Assets/_SCRIPTS/Config/GameBalance.cs`, which mirror the **default field values** on **`GameBalance`** and safe fallbacks:
+
+| Area | Fallback when `Active == null` (or invalid field) |
+|------|---------------------------------------------------|
+| Round duration | **900** s |
+| Enemies at player level 1 | **12** (also if asset field ≤ **0**) |
+| Enemies at player level 2 | **28** (also if asset field ≤ **0**) |
+| Enemies per level (level ≥ 3) | **22** (also if asset field ≤ **0**) |
+| Greater enemies / boss gate level | **10** |
+| Boss spawn level multiple | **5** (minimum **1** when asset present) |
+| Boss telegraph duration | **2.2** s (if asset value ≤ **0.05** s, uses **2.2** s) |
+| Boss telegraph tint alpha | **0.14** (clamped **0–1** when asset present) |
+| Boss health multiplier | **3** |
+| Boss EXP multiplier | **2** |
+| Boss bonus XP flat | **250** |
+| Boss score bonus on kill | **500** |
+
+Gameplay scenes should still assign an asset for designers to tweak without hunting constants; the table above is what code does **today** if the reference is empty.
+
+### Background music (`BackgroundMusic`)
+
+Script: **`Assets/_SCRIPTS/BackgroundMusic.cs`**. Put **`BackgroundMusic`** on the **same GameObject** as an **`AudioSource`** (looping BGM).
+
+| Inspector field | Role |
+|-----------------|------|
+| **`backGroundMusic`** | Primary clip when there are **no** alternate tracks, and part of the random pool when alternates exist. |
+| **`alternateTracks`** | Optional array of extra clips. |
+| **`playbackVolume`** | **`Range(0,1)`** — applied to **`AudioSource.volume`** in **`Start`**. |
+
+**Random track selection** (`PickTrack`): If **`alternateTracks`** is **null** or **empty**, the clip is **`backGroundMusic`**. If alternates exist but **`backGroundMusic`** is **null**, Unity picks **`Random.Range(0, alternateTracks.Length)`**. If **both** are set, the pool size is **`alternateTracks.Length + 1`**: roll **`Random.Range(0, pool)`**; indices **`0 … Length−1`** map to **`alternateTracks[i]`**, and the last index picks **`backGroundMusic`**.
+
+**End of round:** Playback stops when **`GameSession.Instance.IsRunActive`** is false. If **`GameSession`** is not yet created, music is treated as still allowed (see WebGL autoplay notes earlier in this README).
 
 ### Boss encounters (tuning & behaviour)
 
 - **Cadence** (`EnemyGenerator` + `GameBalance`): a boss is **scheduled** when player level ≥ **`greaterEnemiesMinPlayerLevel`** and **`level % bossSpawnLevelMultiple == 0`** (defaults: first boss at level **10**, then **15**, **20**, …). Only **one living boss** is allowed in `targets` at a time to avoid spam.
 - **Telegraph**: before the prefab spawns, **`GameplayHudView.PlayBossIncomingTelegraph`** shows a banner + purple screen tint for **`bossTelegraphDurationSeconds`** (real time, unscaled). **`GameplaySfx.PlayBossIncoming`** plays optional clip **`bossIncomingStinger`** on the **`GameplaySfx`** component (same object as **`UserInterface`**).
+- **`EnemyCharacter.isBoss` at spawn:** The telegraphed spawn coroutine and **`EnemyGenerator.spawnEndBoss()`** both instantiate (or pool-acquire) **`endBossPrefab`**, then set **`bossChar.isBoss = true`** on the instance’s **`EnemyCharacter`** when that component exists (`Assets/_SCRIPTS/Behaviour/EnemyGenerator.cs`). Anything that counts boss kills, boss score, XP bonuses, or boss-specific VFX/audio keys off **`isBoss`**.
+- **Manual boss prefabs / hand-placed bosses:** Prefabs or scene instances that are **not** spawned through those paths must have **`EnemyCharacter.isBoss`** set correctly in the **prefab** (or at runtime) so behaviour stays consistent with spawned bosses.
 - **Counters & score** (`GameOver`): **`bossKillCounter`** counts boss defeats separately from **`greaterEnemyKillCounter`** (greater-only, no boss). **`bossBonusScoreTotal`** accumulates **`bossScoreBonusOnKill`** per boss. **`enemyKillCounter`** still increments for every enemy death including bosses.
 - **XP**: `EnemyCharacter` applies **`bossExpMultiplier`** to `expOnKill`; death handlers add **`bossBonusXpFlat`** when `isBoss`.
 
@@ -219,8 +262,10 @@ The workflow uses `unityVersion: auto` (reads `ProjectSettings/ProjectVersion.tx
 
 ## Contributing / picking it back up
 
+For pull requests, scope, and third-party asset notes, see **[`CONTRIBUTING.md`](CONTRIBUTING.md)**. For reporting security issues in this repo’s code or automation, see **[`SECURITY.md`](SECURITY.md)**.
+
 1. Open **`GeoWorldMain`** from `Assets/_SCENES` (or run from **`Start`** and confirm the title screen with any key or mouse click).  
-2. Optional: create a **`Game Balance`** asset and assign it on **`GameOver`** so round length and spawn rules are editable without code changes (see **Tuning & configuration**).  
+2. Optional: create a **`Game Balance`** asset (**Assets → Create → GeoWorld → Game Balance**) and assign it on the **`GameOver`** component’s **`gameBalance`** field (see **Game Balance asset** under **Tuning & configuration**).  
 3. Prefer fixing gameplay in **`Assets/_SCRIPTS`**; treat **`Standard Assets`** as legacy third-party code unless you plan a full replacement.  
 4. After big Unity upgrades, expect more obsolete API warnings in **Standard Assets**; the custom game scripts are the source of truth for design intent.
 
