@@ -188,7 +188,7 @@ public class GreaterEnemyAI : MonoBehaviour {
 
     }
 
-    public void getDamaged(float damage, Vector3? hitOrigin = null, CombatHitSeverity severity = CombatHitSeverity.Light)
+    public void getDamaged(float damage, Vector3? hitOrigin = null, CombatHitSeverity severity = CombatHitSeverity.Light, bool isCritical = false)
     {
         damagedTimer = 0.2f;
         damagedFinished = false;
@@ -199,7 +199,7 @@ public class GreaterEnemyAI : MonoBehaviour {
 
         var fx = CombatFeedback.Instance;
         if (fx != null)
-            fx.NotifyEnemyHit(transform, damage, hitOrigin, severity);
+            fx.NotifyEnemyHit(transform, damage, hitOrigin, severity, isCritical);
     }
 
     private void damaged()

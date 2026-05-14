@@ -111,23 +111,29 @@ public static class BattleLog
             s_panelRoot.SetActive(UserWantsVisible);
     }
 
-    public static void AppendPlayerDamageTaken(float amount, CombatHitSeverity severity)
+    public static void AppendPlayerDamageTaken(float amount, CombatHitSeverity severity, bool isEnemyCritical = false)
     {
         if (!UserWantsVisible)
             return;
         string sev = SeveritySuffix(severity);
-        AppendLine($"You took {FmtDamage(amount)} damage{sev}.");
+        if (isEnemyCritical)
+            AppendLine($"You took {FmtDamage(amount)} damage{sev} (enemy critical hit).");
+        else
+            AppendLine($"You took {FmtDamage(amount)} damage{sev}.");
     }
 
-    public static void AppendEnemyHit(Transform enemyRoot, float damage, CombatHitSeverity severity)
+    public static void AppendEnemyHit(Transform enemyRoot, float damage, CombatHitSeverity severity, bool isCritical = false)
     {
         if (!UserWantsVisible || enemyRoot == null)
             return;
-        if (severity == CombatHitSeverity.Light && !ShouldLogLightEnemyHitNow(enemyRoot))
+        if (severity == CombatHitSeverity.Light && !isCritical && !ShouldLogLightEnemyHitNow(enemyRoot))
             return;
         string name = CleanObjectName(enemyRoot.gameObject);
         string sev = SeveritySuffix(severity);
-        AppendLine($"{name} took {FmtDamage(damage)} damage{sev}.");
+        if (isCritical)
+            AppendLine($"{name} took {FmtDamage(damage)} damage{sev} (critical hit).");
+        else
+            AppendLine($"{name} took {FmtDamage(damage)} damage{sev}.");
     }
 
     public static void AppendEnemyDefeated(EnemyCharacter ec)

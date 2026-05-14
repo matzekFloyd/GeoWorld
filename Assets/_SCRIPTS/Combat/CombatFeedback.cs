@@ -72,7 +72,7 @@ public sealed class CombatFeedback : MonoBehaviour
     public static void SetCombatReducedMotion(bool on) =>
         PlayerPrefs.SetInt(ReducedMotionPlayerPrefsKey, on ? 1 : 0);
 
-    public void NotifyPlayerDamaged(float amount, Vector3 worldSource, bool hasWorldSource, CombatHitSeverity severity)
+    public void NotifyPlayerDamaged(float amount, Vector3 worldSource, bool hasWorldSource, CombatHitSeverity severity, bool isEnemyCritical = false)
     {
         RegisterAndEnsureAudio();
         var hud = GameplayHudView.Instance;
@@ -108,10 +108,10 @@ public sealed class CombatFeedback : MonoBehaviour
         {
             var p = GameObject.FindGameObjectWithTag("Player1");
             if (p != null)
-                dmgPool.SpawnPlayerDamageTaken(p.transform, amount, severity);
+                dmgPool.SpawnPlayerDamageTaken(p.transform, amount, severity, isEnemyCritical);
         }
 
-        BattleLog.AppendPlayerDamageTaken(amount, severity);
+        BattleLog.AppendPlayerDamageTaken(amount, severity, isEnemyCritical);
 
         var playerHit = _playerHitClip != null ? _playerHitClip : ProceduralEditorBlips.Get(110);
         if (playerHit != null && _audio != null)
@@ -134,7 +134,7 @@ public sealed class CombatFeedback : MonoBehaviour
             StartCoroutine(MicroHitStopRoutine());
     }
 
-    public void NotifyEnemyHit(Transform enemyRoot, float damage, Vector3? hitOrigin, CombatHitSeverity severity)
+    public void NotifyEnemyHit(Transform enemyRoot, float damage, Vector3? hitOrigin, CombatHitSeverity severity, bool isCritical = false)
     {
         if (enemyRoot == null)
             return;
@@ -150,6 +150,8 @@ public sealed class CombatFeedback : MonoBehaviour
             CombatHitSeverity.Medium => 1.07f,
             _ => 1.05f,
         };
+        if (isCritical)
+            punch = 1f + (punch - 1f) * 1.15f;
         float dur = severity switch
         {
             CombatHitSeverity.Heavy => 0.14f,
@@ -172,10 +174,10 @@ public sealed class CombatFeedback : MonoBehaviour
         if (dmgPool != null)
         {
             bool isBoss = ecForPunch != null && ecForPunch.isBoss;
-            dmgPool.SpawnEnemyDamage(enemyRoot, damage, severity, isBoss);
+            dmgPool.SpawnEnemyDamage(enemyRoot, damage, severity, isBoss, isCritical);
         }
 
-        BattleLog.AppendEnemyHit(enemyRoot, damage, severity);
+        BattleLog.AppendEnemyHit(enemyRoot, damage, severity, isCritical);
     }
 
     bool TryScreenDirection(Vector3 world, out float dx, out float dy)

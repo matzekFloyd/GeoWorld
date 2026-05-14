@@ -73,9 +73,9 @@ public class HomingMissileAI : MonoBehaviour {
             if (Vector3.Distance(target.transform.position, transform.position) < dmgDistance)
             {
                 if (gameObject.CompareTag("SmallHomingMissile"))
-                    pc.ApplyIncomingDamage(smallMissileDmg, transform.position, true, CombatHitSeverity.Medium);
+                    pc.ApplyIncomingDamage(smallMissileDmg, transform.position, true, CombatHitSeverity.Medium, true, false);
                 else if (gameObject.CompareTag("BigHomingMissile"))
-                    pc.ApplyIncomingDamage(bigMissileDmg, transform.position, true, CombatHitSeverity.Heavy);
+                    pc.ApplyIncomingDamage(bigMissileDmg, transform.position, true, CombatHitSeverity.Heavy, true, true);
                 if (_lifetimeRoutine != null)
                 {
                     StopCoroutine(_lifetimeRoutine);

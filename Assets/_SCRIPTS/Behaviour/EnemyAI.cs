@@ -198,7 +198,9 @@ public class EnemyAI : MonoBehaviour {
             var pcHealth = target.GetComponent<PlayerCharacter>();
             if (pcHealth != null)
             {
-                pcHealth.ApplyIncomingDamage(damage, transform.position, true, CombatHitSeverity.Light);
+                EnsureEnemyCharacter();
+                bool bossTier = m_EnemyCharacter != null && m_EnemyCharacter.isBoss;
+                pcHealth.ApplyIncomingDamage(damage, transform.position, true, CombatHitSeverity.Light, true, bossTier);
                 GameplaySfx.Instance?.PlayEnemyMeleeAttack();
             }
             attackTimer = coolDown;
@@ -284,7 +286,7 @@ public class EnemyAI : MonoBehaviour {
         }
     }
 
-    public void getDamaged(float damage, Vector3? hitOrigin = null, CombatHitSeverity severity = CombatHitSeverity.Light)
+    public void getDamaged(float damage, Vector3? hitOrigin = null, CombatHitSeverity severity = CombatHitSeverity.Light, bool isCritical = false)
     {
         EnsureEnemyCharacter();
         if (m_EnemyCharacter == null)
@@ -297,7 +299,7 @@ public class EnemyAI : MonoBehaviour {
 
         var fx = CombatFeedback.Instance;
         if (fx != null)
-            fx.NotifyEnemyHit(transform, damage, hitOrigin, severity);
+            fx.NotifyEnemyHit(transform, damage, hitOrigin, severity, isCritical);
     }
 
     private void damaged()

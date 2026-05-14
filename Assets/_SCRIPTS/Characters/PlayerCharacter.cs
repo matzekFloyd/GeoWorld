@@ -45,15 +45,19 @@ public class PlayerCharacter : BaseCharacter {
     }
 
     /// <summary>Enemy/missile damage with world origin for directional HUD feedback.</summary>
-    public void ApplyIncomingDamage(float amount, Vector3 worldSource, bool hasWorldSource, CombatHitSeverity severity)
+    /// <param name="rollEnemyCrit">When true, may crit if player level ≥ <see cref="EnemyCritHelper.MinPlayerLevelForEnemyCrit"/>.</param>
+    /// <param name="enemyAttackerIsBossTier">Higher crit chance (bosses, big missiles, etc.).</param>
+    public void ApplyIncomingDamage(float amount, Vector3 worldSource, bool hasWorldSource, CombatHitSeverity severity, bool rollEnemyCrit = false, bool enemyAttackerIsBossTier = false)
     {
         if (amount <= 0f)
             return;
-        ApplyHealthChange(-Mathf.Abs(amount));
+        float dealt = Mathf.Abs(amount);
+        bool enemyCrit = rollEnemyCrit && EnemyCritHelper.TryApplyEnemyCritAgainstPlayer(this, ref dealt, enemyAttackerIsBossTier);
+        ApplyHealthChange(-dealt);
         _lastIncomingDamageTime = Time.time;
         var fx = CombatFeedback.Instance;
         if (fx != null)
-            fx.NotifyPlayerDamaged(amount, worldSource, hasWorldSource, severity);
+            fx.NotifyPlayerDamaged(dealt, worldSource, hasWorldSource, severity, enemyCrit);
     }
 
     private void setInitialPlayerStatistics()
