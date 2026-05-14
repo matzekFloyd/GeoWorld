@@ -19,6 +19,13 @@ public sealed class GameplayHudView : MonoBehaviour
     /// <summary>Multiplier applied after <see cref="Image.SetNativeSize"/> on the crosshair (1 = texture pixel size at current Canvas scale).</summary>
     const float CrosshairDisplayScale = 0.5f;
 
+    const float BloodRitualFxFadeIn = 0.22f;
+    const float BloodRitualFxFadeOut = 0.34f;
+    const float BloodVignetteFadeIn = 0.55f;
+    const float BloodVignetteFadeOut = 0.65f;
+    const float HealFreezeOverlayFadeIn = 0.2f;
+    const float HealFreezeOverlayFadeOut = 0.3f;
+
     Canvas _canvas;
     Text _classTitleText;
     Text _levelText;
@@ -35,14 +42,24 @@ public sealed class GameplayHudView : MonoBehaviour
     Image _fxBloodB;
     Image _fxFreeze;
 
-    bool _fxHealOn;
+    bool _fxHealTargetOn;
     Texture2D _fxHealTex;
-    bool _fxBloodAOn;
-    Texture2D _fxBloodATex;
-    bool _fxBloodBOn;
-    Texture2D _fxBloodBTex;
-    bool _fxFreezeOn;
+    Texture2D _fxHealSpriteSource;
+    float _fxHealAlpha;
+
+    bool _bloodRitualFxTargetOn;
+    Texture2D _bloodRitualFxTexA;
+    Texture2D _bloodRitualFxTexB;
+    Texture2D _bloodRitualFxSpriteSourceA;
+    Texture2D _bloodRitualFxSpriteSourceB;
+    float _bloodRitualFxAlpha;
+
+    float _bloodVignetteTargetAlpha;
+    float _bloodVignetteAlpha;
+    bool _fxFreezeTargetOn;
     Texture2D _fxFreezeTex;
+    Texture2D _fxFreezeSpriteSource;
+    float _fxFreezeAlpha;
 
     Image _hitTakenCenterPulse;
     Image[] _hitTakenEdges;
@@ -117,6 +134,7 @@ public sealed class GameplayHudView : MonoBehaviour
             return;
         BattleLog.ProcessToggleHotkey();
         BattleLog.TickSafeAreaLayout();
+        TickFullscreenOverlayFades();
     }
 
     /// <summary>Creates default uGUI under this GameObject if not already built.</summary>
@@ -156,6 +174,7 @@ public sealed class GameplayHudView : MonoBehaviour
         _fxBloodA = CreateFullscreenImage(canvasRt, "FxBloodA");
         _fxBloodB = CreateFullscreenImage(canvasRt, "FxBloodB");
         _fxFreeze = CreateFullscreenImage(canvasRt, "FxFreeze");
+        InitFullscreenSkillOverlayAlphas();
 
         BuildCombatHitOverlays(canvasRt);
 
@@ -174,6 +193,20 @@ public sealed class GameplayHudView : MonoBehaviour
     {
         _lastLevel = int.MinValue;
         _lastBloodTier = -1;
+        _bloodVignetteTargetAlpha = 0f;
+        _bloodVignetteAlpha = 0f;
+        _bloodRitualFxTargetOn = false;
+        _bloodRitualFxAlpha = 0f;
+        _bloodRitualFxTexA = _bloodRitualFxTexB = null;
+        _bloodRitualFxSpriteSourceA = _bloodRitualFxSpriteSourceB = null;
+        _fxHealTargetOn = false;
+        _fxHealAlpha = 0f;
+        _fxHealTex = null;
+        _fxHealSpriteSource = null;
+        _fxFreezeTargetOn = false;
+        _fxFreezeAlpha = 0f;
+        _fxFreezeTex = null;
+        _fxFreezeSpriteSource = null;
         _lastHealthTxt = _lastManaTxt = _lastExpTxt = null;
         _lastHealthFill = _lastManaFill = _lastExpFill = -1f;
         _lastHealthOverhealTint = -1;
@@ -234,34 +267,42 @@ public sealed class GameplayHudView : MonoBehaviour
     {
         if (_bloodVignette == null)
             return;
-        if (tier == _lastBloodTier)
-            return;
-        _lastBloodTier = tier;
-        if (tier <= 0 || tier > 3)
+
+        bool want = tier >= 1 && tier <= 3;
+        Texture2D tex = want ? (tier == 1 ? t1 : tier == 2 ? t2 : t3) : null;
+        if (want && tex == null)
+            want = false;
+
+        if (tier != _lastBloodTier)
         {
-            _bloodVignette.gameObject.SetActive(false);
-            return;
+            _lastBloodTier = tier;
+            if (want)
+                _bloodVignette.sprite = GetOrCreateSprite(tex);
         }
-        var tex = tier == 1 ? t1 : tier == 2 ? t2 : t3;
-        if (tex == null)
-        {
-            _bloodVignette.gameObject.SetActive(false);
-            return;
-        }
-        _bloodVignette.sprite = GetOrCreateSprite(tex);
-        _bloodVignette.color = Color.white;
-        _bloodVignette.gameObject.SetActive(true);
+
+        _bloodVignetteTargetAlpha = want ? 1f : 0f;
     }
 
-    public void ConfigureHealFlash(bool on, Texture2D tex) => SetFullscreenFx(ref _fxHealOn, ref _fxHealTex, _fxHeal, on, tex);
+    public void ConfigureHealFlash(bool on, Texture2D tex)
+    {
+        _fxHealTargetOn = on;
+        if (tex != null)
+            _fxHealTex = tex;
+    }
 
     public void ConfigureBloodRitualFx(bool on, Texture2D a, Texture2D b)
     {
-        SetFullscreenFx(ref _fxBloodAOn, ref _fxBloodATex, _fxBloodA, on, a);
-        SetFullscreenFx(ref _fxBloodBOn, ref _fxBloodBTex, _fxBloodB, on && b != null, b);
+        _bloodRitualFxTargetOn = on;
+        _bloodRitualFxTexA = a;
+        _bloodRitualFxTexB = b;
     }
 
-    public void ConfigureFreezeFx(bool on, Texture2D tex) => SetFullscreenFx(ref _fxFreezeOn, ref _fxFreezeTex, _fxFreeze, on, tex);
+    public void ConfigureFreezeFx(bool on, Texture2D tex)
+    {
+        _fxFreezeTargetOn = on;
+        if (tex != null)
+            _fxFreezeTex = tex;
+    }
 
     /// <summary>Brief non-flashing edge + center tint when the player takes damage (accessibility-friendly caps).</summary>
     public void PlayHitTakenFeedback(bool hasDirection, float dirX, float dirY, float centerPeakAlpha, float edgePeakAlpha, float duration, bool reducedMotion)
@@ -612,6 +653,20 @@ public sealed class GameplayHudView : MonoBehaviour
         {
             SetHudVisible(false);
             _lastBloodTier = -1;
+            _bloodVignetteTargetAlpha = 0f;
+            _bloodVignetteAlpha = 0f;
+            _bloodRitualFxTargetOn = false;
+            _bloodRitualFxAlpha = 0f;
+            _bloodRitualFxSpriteSourceA = _bloodRitualFxSpriteSourceB = null;
+            if (_bloodVignette != null)
+            {
+                _bloodVignette.gameObject.SetActive(false);
+                var c = _bloodVignette.color;
+                c.a = 0f;
+                _bloodVignette.color = c;
+            }
+            DeactivateBloodRitualFxImages();
+            DeactivateHealFreezeOverlayImages();
             _lastHealthOverhealTint = -1;
             _lastManaOvermanaTint = -1;
             return;
@@ -886,26 +941,181 @@ public sealed class GameplayHudView : MonoBehaviour
         t.text = value;
     }
 
-    static void SetFullscreenFx(ref bool lastOn, ref Texture2D lastTex, Image img, bool on, Texture2D tex)
+    void InitFullscreenSkillOverlayAlphas()
+    {
+        if (_bloodVignette != null)
+        {
+            var c = _bloodVignette.color;
+            c.r = c.g = c.b = 1f;
+            c.a = 0f;
+            _bloodVignette.color = c;
+        }
+        SetImageAlphaZero(_fxHeal);
+        SetImageAlphaZero(_fxFreeze);
+        SetImageAlphaZero(_fxBloodA);
+        SetImageAlphaZero(_fxBloodB);
+    }
+
+    static void SetImageAlphaZero(Image img)
     {
         if (img == null)
             return;
-        if (!on || tex == null)
-        {
-            if (lastOn)
-                img.gameObject.SetActive(false);
-            lastOn = false;
-            lastTex = null;
+        var c = img.color;
+        c.r = c.g = c.b = 1f;
+        c.a = 0f;
+        img.color = c;
+    }
+
+    void DeactivateBloodRitualFxImages()
+    {
+        SetImageAlphaZero(_fxBloodA);
+        SetImageAlphaZero(_fxBloodB);
+        if (_fxBloodA != null)
+            _fxBloodA.gameObject.SetActive(false);
+        if (_fxBloodB != null)
+            _fxBloodB.gameObject.SetActive(false);
+        _bloodRitualFxSpriteSourceA = _bloodRitualFxSpriteSourceB = null;
+    }
+
+    void DeactivateHealFreezeOverlayImages()
+    {
+        _fxHealTargetOn = false;
+        _fxHealAlpha = 0f;
+        SetImageAlphaZero(_fxHeal);
+        if (_fxHeal != null)
+            _fxHeal.gameObject.SetActive(false);
+        _fxHealSpriteSource = null;
+
+        _fxFreezeTargetOn = false;
+        _fxFreezeAlpha = 0f;
+        SetImageAlphaZero(_fxFreeze);
+        if (_fxFreeze != null)
+            _fxFreeze.gameObject.SetActive(false);
+        _fxFreezeSpriteSource = null;
+    }
+
+    void TickFadedFullscreenSkillLayer(
+        Image img,
+        bool targetOn,
+        Texture2D tex,
+        ref Texture2D spriteSource,
+        ref float alpha,
+        float fadeInSec,
+        float fadeOutSec,
+        float dt)
+    {
+        if (img == null)
             return;
-        }
-        if (!lastOn || lastTex != tex)
+
+        float tgt = targetOn && tex != null ? 1f : 0f;
+        float fadeSec = alpha < tgt ? fadeInSec : fadeOutSec;
+        float speed = 1f / Mathf.Max(0.04f, fadeSec);
+        alpha = Mathf.MoveTowards(alpha, tgt, dt * speed);
+
+        if (tex != null && (targetOn || alpha > 0.004f))
         {
-            lastTex = tex;
-            img.sprite = GetOrCreateSprite(tex);
-            img.color = Color.white;
+            if (!ReferenceEquals(spriteSource, tex))
+            {
+                spriteSource = tex;
+                img.sprite = GetOrCreateSprite(tex);
+            }
             img.gameObject.SetActive(true);
+            var c = Color.white;
+            c.a = alpha;
+            img.color = c;
         }
-        lastOn = true;
+        else
+        {
+            SetImageAlphaZero(img);
+            img.gameObject.SetActive(false);
+            spriteSource = null;
+        }
+    }
+
+    void TickFullscreenOverlayFades()
+    {
+        float dt = Time.deltaTime;
+        if (dt <= 0f)
+            return;
+
+        float ritualTarget = _bloodRitualFxTargetOn ? 1f : 0f;
+        float ritualFadeSec = _bloodRitualFxAlpha < ritualTarget ? BloodRitualFxFadeIn : BloodRitualFxFadeOut;
+        float ritualSpeed = 1f / Mathf.Max(0.04f, ritualFadeSec);
+        _bloodRitualFxAlpha = Mathf.MoveTowards(_bloodRitualFxAlpha, ritualTarget, dt * ritualSpeed);
+
+        if (_fxBloodA != null && _bloodRitualFxTexA != null && (_bloodRitualFxTargetOn || _bloodRitualFxAlpha > 0.004f))
+        {
+            if (!ReferenceEquals(_bloodRitualFxSpriteSourceA, _bloodRitualFxTexA))
+            {
+                _bloodRitualFxSpriteSourceA = _bloodRitualFxTexA;
+                _fxBloodA.sprite = GetOrCreateSprite(_bloodRitualFxTexA);
+            }
+            _fxBloodA.gameObject.SetActive(true);
+            var ca = Color.white;
+            ca.a = _bloodRitualFxAlpha;
+            _fxBloodA.color = ca;
+        }
+        else if (_fxBloodA != null)
+        {
+            SetImageAlphaZero(_fxBloodA);
+            _fxBloodA.gameObject.SetActive(false);
+            _bloodRitualFxSpriteSourceA = null;
+        }
+
+        if (_fxBloodB != null)
+        {
+            if (_bloodRitualFxTexB != null && (_bloodRitualFxTargetOn || _bloodRitualFxAlpha > 0.004f))
+            {
+                if (!ReferenceEquals(_bloodRitualFxSpriteSourceB, _bloodRitualFxTexB))
+                {
+                    _bloodRitualFxSpriteSourceB = _bloodRitualFxTexB;
+                    _fxBloodB.sprite = GetOrCreateSprite(_bloodRitualFxTexB);
+                }
+                _fxBloodB.gameObject.SetActive(true);
+                var cb = Color.white;
+                cb.a = _bloodRitualFxAlpha;
+                _fxBloodB.color = cb;
+            }
+            else
+            {
+                SetImageAlphaZero(_fxBloodB);
+                _fxBloodB.gameObject.SetActive(false);
+                _bloodRitualFxSpriteSourceB = null;
+            }
+        }
+
+        if (_bloodVignette != null)
+        {
+            float vigTarget = _bloodVignetteTargetAlpha;
+            float vigFadeSec = _bloodVignetteAlpha < vigTarget ? BloodVignetteFadeIn : BloodVignetteFadeOut;
+            float vigSpeed = 1f / Mathf.Max(0.04f, vigFadeSec);
+            _bloodVignetteAlpha = Mathf.MoveTowards(_bloodVignetteAlpha, vigTarget, dt * vigSpeed);
+
+            bool vigKeep = _bloodVignetteAlpha > 0.004f || _bloodVignetteTargetAlpha > 0.004f;
+            _bloodVignette.gameObject.SetActive(vigKeep);
+            var vc = Color.white;
+            vc.a = _bloodVignetteAlpha;
+            _bloodVignette.color = vc;
+        }
+
+        TickFadedFullscreenSkillLayer(
+            _fxHeal,
+            _fxHealTargetOn,
+            _fxHealTex,
+            ref _fxHealSpriteSource,
+            ref _fxHealAlpha,
+            HealFreezeOverlayFadeIn,
+            HealFreezeOverlayFadeOut,
+            dt);
+        TickFadedFullscreenSkillLayer(
+            _fxFreeze,
+            _fxFreezeTargetOn,
+            _fxFreezeTex,
+            ref _fxFreezeSpriteSource,
+            ref _fxFreezeAlpha,
+            HealFreezeOverlayFadeIn,
+            HealFreezeOverlayFadeOut,
+            dt);
     }
 
     static void BuildTopLeftPanel(RectTransform canvas, float barWidth,
