@@ -48,6 +48,13 @@ public class GameOver : MonoBehaviour {
     Text m_BossHudCounter;
     Text m_BossScoreboardCounter;
 
+    bool _endGameScoreboardApplied;
+    string _lastEndGameTitle;
+    int _lastEndGameEnemyKills = int.MinValue;
+    int _lastEndGameGreaterKills = int.MinValue;
+    int _lastEndGameBossKills = int.MinValue;
+    int _lastEndGameBossBonusScore = int.MinValue;
+
 
     // Use this for initialization
     void Start () {
@@ -154,19 +161,21 @@ public class GameOver : MonoBehaviour {
             {
                 m_TimeFrozen = true;
                 Time.timeScale = 0f;
+                if (textTimer != null) textTimer.enabled = false;
+                if (textEnemyCounter != null) textEnemyCounter.enabled = false;
+                if (textGreaterEnemyCounter != null) textGreaterEnemyCounter.enabled = false;
+                if (m_BossHudCounter != null) m_BossHudCounter.enabled = false;
             }
-            if (textTimer != null) textTimer.enabled = false;
-            if (textEnemyCounter != null) textEnemyCounter.enabled = false;
-            if (textGreaterEnemyCounter != null) textGreaterEnemyCounter.enabled = false;
-            if (m_BossHudCounter != null) m_BossHudCounter.enabled = false;
 
-            if (playerDied)
-                ApplyEndGameUi("Game Over! You died!");
-            else
-                ApplyEndGameUi("Congratulations! You saved GeoWorld!");
+            string title = playerDied ? "Game Over! You died!" : "Congratulations! You saved GeoWorld!";
+            if (ShouldRefreshEndGameScoreboard(title))
+            {
+                ApplyEndGameUi(title);
+                SetQuitInstructions();
+                LayoutEndGameScoreboardAndQuit();
+                RememberEndGameScoreboardState(title);
+            }
 
-            SetQuitInstructions();
-            LayoutEndGameScoreboardAndQuit();
             HandleQuitRequest();
         }
         else
@@ -186,6 +195,33 @@ public class GameOver : MonoBehaviour {
             }
         }
 
+    }
+
+    bool ShouldRefreshEndGameScoreboard(string title)
+    {
+        if (!_endGameScoreboardApplied)
+            return true;
+        if (title != _lastEndGameTitle)
+            return true;
+        if (enemyKillCounter != _lastEndGameEnemyKills)
+            return true;
+        if (greaterEnemyKillCounter != _lastEndGameGreaterKills)
+            return true;
+        if (bossKillCounter != _lastEndGameBossKills)
+            return true;
+        if (bossBonusScoreTotal != _lastEndGameBossBonusScore)
+            return true;
+        return false;
+    }
+
+    void RememberEndGameScoreboardState(string title)
+    {
+        _endGameScoreboardApplied = true;
+        _lastEndGameTitle = title;
+        _lastEndGameEnemyKills = enemyKillCounter;
+        _lastEndGameGreaterKills = greaterEnemyKillCounter;
+        _lastEndGameBossKills = bossKillCounter;
+        _lastEndGameBossBonusScore = bossBonusScoreTotal;
     }
 
     void ApplyEndGameUi(string title)
