@@ -133,10 +133,12 @@ public class GreaterEnemyAI : MonoBehaviour {
     private void shootSmall()
     {
         var pools = GeoWorldObjectPools.Instance;
+        GameObject missile = null;
         if (pools != null && smallHomingMissile != null)
-            pools.Acquire(smallHomingMissile, transform.position, transform.rotation, null);
+            missile = pools.Acquire(smallHomingMissile, transform.position, transform.rotation, null);
         else if (smallHomingMissile != null)
-            Instantiate(smallHomingMissile, transform.position, transform.rotation);
+            missile = Instantiate(smallHomingMissile, transform.position, transform.rotation);
+        GeoWorldObjectPools.ApplyProjectileGravityIfApplicable(missile);
         GameplaySfx.Instance?.PlayEnemyRangedAttack();
         shootSmallTimer = 3;
 
@@ -148,10 +150,12 @@ public class GreaterEnemyAI : MonoBehaviour {
     private void shootBig()
     {
         var pools = GeoWorldObjectPools.Instance;
+        GameObject missile = null;
         if (pools != null && bigHomingMissile != null)
-            pools.Acquire(bigHomingMissile, transform.position, transform.rotation, null);
+            missile = pools.Acquire(bigHomingMissile, transform.position, transform.rotation, null);
         else if (bigHomingMissile != null)
-            Instantiate(bigHomingMissile, transform.position, transform.rotation);
+            missile = Instantiate(bigHomingMissile, transform.position, transform.rotation);
+        GeoWorldObjectPools.ApplyProjectileGravityIfApplicable(missile);
 
         GameplaySfx.Instance?.PlayEnemyRangedAttack();
         shootBigTimer = 15;
