@@ -354,6 +354,7 @@ public class EnemyAI : MonoBehaviour {
     private void die()
     {
         EnsureEnemyCharacter();
+        BattleLog.AppendEnemyDefeated(m_EnemyCharacter);
         var bossDie = m_EnemyCharacter != null && m_EnemyCharacter.isBoss;
         GameplaySfx.Instance?.PlayEnemyDie(bossDie);
 

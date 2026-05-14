@@ -305,6 +305,7 @@ public class GreaterEnemyAI : MonoBehaviour {
     private void die()
     {
         var ec = this.gameObject.GetComponent<EnemyCharacter>();
+        BattleLog.AppendEnemyDefeated(ec);
         var boss = ec != null && ec.isBoss;
         GameplaySfx.Instance?.PlayEnemyDie(boss);
 

@@ -3,7 +3,7 @@ using UnityEngine;
 
 /// <summary>
 /// Runtime combat juice: player damage HUD pulse, enemy hit scale punch, optional clips, light camera shake,
-/// micro hit-stop for <see cref="CombatHitSeverity.Heavy"/>. Lives on the same object as <see cref="UserInterface"/>.
+/// micro hit-stop for <see cref="CombatHitSeverity.Heavy"/>, and <see cref="BattleLog"/> lines. Lives on the same object as <see cref="UserInterface"/>.
 /// </summary>
 [DisallowMultipleComponent]
 public sealed class CombatFeedback : MonoBehaviour
@@ -111,6 +111,8 @@ public sealed class CombatFeedback : MonoBehaviour
                 dmgPool.SpawnPlayerDamageTaken(p.transform, amount, severity);
         }
 
+        BattleLog.AppendPlayerDamageTaken(amount, severity);
+
         var playerHit = _playerHitClip != null ? _playerHitClip : ProceduralEditorBlips.Get(110);
         if (playerHit != null && _audio != null)
             _audio.PlayOneShot(playerHit, Mathf.Clamp01(0.55f + amount / 500f));
@@ -172,6 +174,8 @@ public sealed class CombatFeedback : MonoBehaviour
             bool isBoss = ecForPunch != null && ecForPunch.isBoss;
             dmgPool.SpawnEnemyDamage(enemyRoot, damage, severity, isBoss);
         }
+
+        BattleLog.AppendEnemyHit(enemyRoot, damage, severity);
     }
 
     bool TryScreenDirection(Vector3 world, out float dx, out float dy)

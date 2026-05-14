@@ -5,7 +5,7 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// uGUI gameplay HUD (bars, skill columns, crosshair, vignettes). Built at runtime as a child of the
+/// uGUI gameplay HUD (bars, skill columns, crosshair, vignettes, bottom-right battle log). Built at runtime as a child of the
 /// object that hosts <see cref="UserInterface"/> unless you wire references manually in the Inspector.
 /// Fullscreen skill feedback renders above the low-health vignette.
 /// </summary>
@@ -103,6 +103,15 @@ public sealed class GameplayHudView : MonoBehaviour
     {
         if (Instance == this)
             Instance = null;
+        BattleLog.Unbind(this);
+    }
+
+    void Update()
+    {
+        if (!_built)
+            return;
+        BattleLog.ProcessToggleHotkey();
+        BattleLog.TickSafeAreaLayout();
     }
 
     /// <summary>Creates default uGUI under this GameObject if not already built.</summary>
@@ -149,6 +158,7 @@ public sealed class GameplayHudView : MonoBehaviour
         if (minimap != null)
             minimap.BuildUi(canvasRt);
 
+        BuildBattleLog(canvasRt);
         BuildDamageNumbersHost(canvasRt);
 
         _built = true;
@@ -476,6 +486,70 @@ public sealed class GameplayHudView : MonoBehaviour
             _solidWhiteSprite = Sprite.Create(t, new Rect(0, 0, t.width, t.height), new Vector2(0.5f, 0.5f), 100f);
         }
         return _solidWhiteSprite;
+    }
+
+    void BuildBattleLog(RectTransform canvasRt)
+    {
+        // Same inset as minimap (bottom-left); mirror to bottom-right corner — pivot (1,0) → (-inset, inset).
+        float cornerInset = 16f;
+        var minimap = GetComponent<MinimapRadar>();
+        if (minimap != null)
+            cornerInset = minimap.CornerInsetFromBottomLeft;
+
+        const float panelW = 300f;
+        const float panelH = 158f;
+        float baseX = -cornerInset;
+        float baseY = cornerInset;
+
+        var go = CreateUIObject("BattleLog", canvasRt);
+        var rootRt = go.GetComponent<RectTransform>();
+        rootRt.anchorMin = rootRt.anchorMax = new Vector2(1f, 0f);
+        rootRt.pivot = new Vector2(1f, 0f);
+        rootRt.sizeDelta = new Vector2(panelW, panelH);
+        rootRt.anchoredPosition = new Vector2(baseX, baseY);
+
+        go.AddComponent<RectMask2D>();
+
+        var bgGo = CreateUIObject("BattleLogBg", go.transform);
+        var bgRt = bgGo.GetComponent<RectTransform>();
+        StretchFull(bgRt);
+        var bgImg = bgGo.AddComponent<Image>();
+        bgImg.sprite = GetSolidWhiteSprite();
+        bgImg.color = new Color(0.04f, 0.05f, 0.08f, 0.82f);
+        bgImg.raycastTarget = false;
+        bgGo.transform.SetAsFirstSibling();
+
+        var textGo = CreateUIObject("BattleLogText", go.transform);
+        var textRt = textGo.GetComponent<RectTransform>();
+        textRt.anchorMin = new Vector2(0f, 0f);
+        textRt.anchorMax = new Vector2(1f, 1f);
+        textRt.pivot = new Vector2(0f, 0f);
+        textRt.offsetMin = new Vector2(8f, 6f);
+        textRt.offsetMax = new Vector2(-8f, -6f);
+        var txt = textGo.AddComponent<Text>();
+        txt.font = TryBattleLogMonospaceFont(11) ?? UiFont;
+        txt.fontSize = 11;
+        txt.fontStyle = FontStyle.Normal;
+        txt.supportRichText = false;
+        txt.alignment = TextAnchor.LowerLeft;
+        txt.horizontalOverflow = HorizontalWrapMode.Wrap;
+        txt.verticalOverflow = VerticalWrapMode.Overflow;
+        txt.color = new Color(0.92f, 0.94f, 0.98f, 1f);
+        txt.raycastTarget = false;
+        txt.alignByGeometry = true;
+        var outline = textGo.AddComponent<Outline>();
+        outline.effectColor = new Color(0f, 0f, 0f, 0.35f);
+        outline.effectDistance = new Vector2(0.5f, -0.5f);
+        outline.useGraphicAlpha = true;
+        txt.text = "";
+
+        BattleLog.Bind(go, txt, rootRt, _canvas, new Vector2(baseX, baseY), this);
+    }
+
+    static Font TryBattleLogMonospaceFont(int size)
+    {
+        var f = Font.CreateDynamicFontFromOSFont(new[] { "Consolas", "Cascadia Mono", "Courier New", "Lucida Console" }, size);
+        return f;
     }
 
     void BuildDamageNumbersHost(RectTransform canvasRt)
