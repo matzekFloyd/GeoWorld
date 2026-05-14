@@ -5,7 +5,6 @@ public class SkillBasic : MonoBehaviour {
 
     protected GameObject player;
     protected PlayerCharacter m_Player;
-    protected GameOver m_GameOver;
 
     public float manacost;
     public float curCooldown;
@@ -24,16 +23,14 @@ public class SkillBasic : MonoBehaviour {
     {
         player = GameObject.FindGameObjectWithTag("Player1");
         if (player != null)
-        {
             m_Player = player.GetComponent<PlayerCharacter>();
-            m_GameOver = player.GetComponent<GameOver>();
-        }
         curCooldown = 0;
     }
 
     protected bool CanUseSkills()
     {
-        return m_GameOver != null && !m_GameOver.playerDied && !m_GameOver.gameTimeIsOver;
+        var s = GameSession.Instance;
+        return s != null && s.IsRunActive;
     }
 
     protected void updateCoolDown()

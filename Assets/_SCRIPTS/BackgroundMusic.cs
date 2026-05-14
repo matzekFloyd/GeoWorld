@@ -3,9 +3,9 @@ using UnityEngine;
 
 /// <summary>
 /// Loops background music on the same GameObject as <see cref="AudioSource"/>.
-/// Inherits <see cref="GameOver"/> only to reuse end-of-round flags for stopping playback (legacy layout).
+/// Stops when <see cref="GameSession"/> reports the run has ended (player death or time over).
 /// </summary>
-public class BackgroundMusic : GameOver
+public class BackgroundMusic : MonoBehaviour
 {
     [Tooltip("Primary track if no alternates are picked.")]
     public AudioClip backGroundMusic;
@@ -57,10 +57,18 @@ public class BackgroundMusic : GameOver
     IEnumerator VerifyWebGlBgmPlayingAfterFrame()
     {
         yield return null;
-        if (a != null && a.clip != null && !playerDied && !gameTimeIsOver && !a.isPlaying)
+        if (a != null && a.clip != null && RunStillActiveForMusic() && !a.isPlaying)
             m_WaitingForFirstGesture = true;
     }
 #endif
+
+    static bool RunStillActiveForMusic()
+    {
+        var s = GameSession.Instance;
+        if (s == null)
+            return true;
+        return s.IsRunActive;
+    }
 
     AudioClip PickTrack()
     {
@@ -92,7 +100,7 @@ public class BackgroundMusic : GameOver
         }
 #endif
 
-        if (playerDied || gameTimeIsOver)
+        if (!RunStillActiveForMusic())
             a.Stop();
     }
 }

@@ -70,7 +70,7 @@ public class HealSelf : SkillBasic {
         var hud = GameplayHudView.Instance;
         if (hud == null)
             return;
-        bool on = showHealTexture && m_GameOver != null && !m_GameOver.playerDied && !m_GameOver.gameTimeIsOver;
+        bool on = showHealTexture && CanUseSkills();
         hud.ConfigureHealFlash(on, healTexture);
     }
 

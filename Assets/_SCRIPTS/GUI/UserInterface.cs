@@ -13,7 +13,6 @@ public class UserInterface : MonoBehaviour
     private GameObject player;
 
     private PlayerCharacter m_Player;
-    private GameOver m_GameOver;
     private GeoShot m_GeoShot;
     private GeoBlast m_GeoBlast;
     private GeoPhysics m_GeoPhysics;
@@ -81,6 +80,7 @@ public class UserInterface : MonoBehaviour
 
     void Start()
     {
+        GameSession.EnsureForScene();
         player = GameObject.FindGameObjectWithTag("Player1");
         if (player != null)
         {
@@ -93,8 +93,6 @@ public class UserInterface : MonoBehaviour
             m_BloodRitual = player.GetComponent<BloodRitual>();
             m_FreezeTime = player.GetComponent<FreezeTime>();
         }
-        m_GameOver = GetComponent<GameOver>();
-
         _hud.EnsureBuilt(this);
         var dmgPool = GetComponent<FloatingDamageNumberPool>();
         if (dmgPool != null && _hud.DamageNumbersHost != null)
@@ -146,7 +144,8 @@ public class UserInterface : MonoBehaviour
 
         BuildSkillStrings();
 
-        bool show = m_GameOver != null && !m_GameOver.playerDied && !m_GameOver.gameTimeIsOver;
+        var session = GameSession.Instance;
+        bool show = session != null && session.IsRunActive;
         if (_minimap != null)
             _minimap.SetGameplayHudVisible(show);
         _hud.RefreshGameplay(

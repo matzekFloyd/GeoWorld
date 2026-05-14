@@ -12,7 +12,6 @@ public class PlayerCharacter : BaseCharacter {
     public float expNeededForLevelUp;
 
     private GameObject enemyGenerator;
-    private GameOver m_GameOver;
 
 
 
@@ -23,7 +22,6 @@ public class PlayerCharacter : BaseCharacter {
         enemyGenerator = GameObject.FindGameObjectWithTag("Spawn");
         if (enemyGenerator == null)
             Debug.LogWarning("GeoWorld: No GameObject with tag 'Spawn' found. Enemy wave scaling (LevelUp → EnemyGenerator) will not work.");
-        m_GameOver = GetComponent<GameOver>();
         setInitialPlayerStatistics();
     }
 
@@ -64,7 +62,7 @@ public class PlayerCharacter : BaseCharacter {
         }
 
         //FÜR TESTZWECKE
-        if (GameInput.DebugInstantLevelUpUp && m_GameOver != null && !m_GameOver.playerDied && !m_GameOver.gameTimeIsOver)
+        if (GameInput.DebugInstantLevelUpUp && GameSession.Instance != null && GameSession.Instance.IsRunActive)
         {
                 LevelUp();
         }
