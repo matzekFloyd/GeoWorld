@@ -404,6 +404,7 @@ public class EnemyAI : MonoBehaviour {
         float gainedExp = ec.getExpOnKill();
         var pc = target.GetComponent<PlayerCharacter>();
         pc.AddExp(gainedExp + (ec.isBoss ? GameBalanceHelper.BossBonusXpFlat : 0f));
+        GameBalanceHelper.ApplyKillSustain(pc, ec.isBoss, ec.iAmGreaterEnemy);
 
         GameOver go = target.GetComponent<GameOver>();
         ++go.enemyKillCounter;

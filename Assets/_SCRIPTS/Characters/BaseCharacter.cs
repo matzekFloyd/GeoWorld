@@ -50,12 +50,19 @@ public class BaseCharacter : MonoBehaviour
         return false;
     }
 
+    /// <summary>Upper bound for <see cref="curHealth"/> after heals/damage (default: nominal max HP).</summary>
+    protected virtual float GetHealthUpperClamp()
+    {
+        return maxHealth;
+    }
+
     protected void ApplyHealthChange(float change)
     {
         curHealth += change;
 
-        if (curHealth > maxHealth)
-            curHealth = maxHealth;
+        float cap = GetHealthUpperClamp();
+        if (curHealth > cap)
+            curHealth = cap;
 
         if (maxHealth < 1)
             maxHealth = 1;

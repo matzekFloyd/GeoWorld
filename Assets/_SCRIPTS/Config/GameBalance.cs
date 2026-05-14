@@ -3,7 +3,7 @@ using UnityEngine;
 /// <summary>
 /// Central tuning data. Create via Assets → Create → GeoWorld → Game Balance,
 /// then assign it on the GameObject that has <see cref="GameOver"/> (same object as the round UI is fine).
-/// If unassigned, <see cref="GameBalanceHelper"/> uses conservative built-in defaults for spawn counts.
+/// If unassigned, <see cref="GameBalanceHelper"/> uses conservative built-in defaults for spawn counts and kill sustain.
 /// </summary>
 [CreateAssetMenu(fileName = "GameBalance", menuName = "GeoWorld/Game Balance", order = 0)]
 public class GameBalance : ScriptableObject
@@ -52,6 +52,25 @@ public class GameBalance : ScriptableObject
 
     [Tooltip("Bonus score accumulated when a boss is defeated (shown on end screen; separate from kill counts).")]
     public int bossScoreBonusOnKill = 500;
+
+    [Header("Kill sustain (on enemy death)")]
+    [Tooltip("HP restored to the player when a normal enemy dies (same moment as kill XP).")]
+    public float killRestoreHealthNormal = 4f;
+
+    [Tooltip("Mana restored when a normal enemy dies.")]
+    public float killRestoreManaNormal = 3f;
+
+    [Tooltip("HP restored when a greater enemy (non-boss) dies.")]
+    public float killRestoreHealthGreater = 10f;
+
+    [Tooltip("Mana restored when a greater enemy (non-boss) dies.")]
+    public float killRestoreManaGreater = 6f;
+
+    [Tooltip("HP restored when a boss dies.")]
+    public float killRestoreHealthBoss = 35f;
+
+    [Tooltip("Mana restored when a boss dies.")]
+    public float killRestoreManaBoss = 20f;
 }
 
 /// <summary>
@@ -136,5 +155,34 @@ public static class GameBalanceHelper
 
         int total = linear + extra;
         return Mathf.Max(EnemiesAtPlayerLevel2, total);
+    }
+
+    /// <summary>HP/mana bump when an enemy dies; uses <see cref="GameBalance"/> kill-sustain fields (boss &gt; greater &gt; normal).</summary>
+    public static void ApplyKillSustain(PlayerCharacter pc, bool isBoss, bool isGreaterEnemy)
+    {
+        if (pc == null)
+            return;
+        float hp;
+        float mp;
+        if (isBoss)
+        {
+            hp = Active != null ? Active.killRestoreHealthBoss : 35f;
+            mp = Active != null ? Active.killRestoreManaBoss : 20f;
+        }
+        else if (isGreaterEnemy)
+        {
+            hp = Active != null ? Active.killRestoreHealthGreater : 10f;
+            mp = Active != null ? Active.killRestoreManaGreater : 6f;
+        }
+        else
+        {
+            hp = Active != null ? Active.killRestoreHealthNormal : 4f;
+            mp = Active != null ? Active.killRestoreManaNormal : 3f;
+        }
+
+        if (hp > 0f)
+            pc.changeCurrentHealth(hp);
+        if (mp > 0f)
+            pc.changeCurrentMana(mp);
     }
 }
