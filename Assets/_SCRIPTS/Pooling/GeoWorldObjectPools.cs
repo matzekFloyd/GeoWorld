@@ -50,7 +50,7 @@ public sealed class GeoWorldObjectPools : MonoBehaviour
             s_Instance = null;
     }
 
-    /// <summary>Spawn or reuse an instance. Resets <see cref="Rigidbody"/> velocity when present.</summary>
+    /// <summary>Spawn or reuse an instance. Resets <see cref="Rigidbody"/> velocity when present and reapplies pooled particle VFX.</summary>
     public GameObject Acquire(GameObject prefab, Vector3 position, Quaternion rotation, Transform parent)
     {
         if (prefab == null)
@@ -73,6 +73,7 @@ public sealed class GeoWorldObjectPools : MonoBehaviour
         inst.transform.SetPositionAndRotation(position, rotation);
         ResetRigidbody(inst);
         inst.SetActive(true);
+        PooledVfxSpawnReset.Apply(inst);
         return inst;
     }
 
