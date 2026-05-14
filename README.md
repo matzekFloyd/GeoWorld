@@ -25,16 +25,20 @@ Main scenes (under `Assets/_SCENES/`):
 | **`UserInterface`** | Drives the gameplay **uGUI** HUD: bars, skill columns, crosshair, and low-health vignette. Reads player/skills in **`Update`** and pushes strings/fill amounts into **`GameplayHudView`** with dirty checks (no **`OnGUI`** on the hot path). Uses **`GameSession`** for whether the HUD/minimap should show during an active run. |
 | **`GameplayHudView`** | **`UnityEngine.UI`** Canvas built at runtime as a child **`GameplayHUD`** (see **Gameplay HUD** below). Hosts fullscreen skill flashes (heal / blood ritual / freeze), **boss incoming** telegraph overlay, and caches **`Sprite`** instances per texture. |
 | **`GameSession`** | Small façade: **`IsRunActive`**, **`Player`**. Created on the **`Player1`** object when **`GameOver.Start`** runs (and **`UserInterface.Start`** calls **`EnsureForScene`** early so HUD order is safe). **`GameOver`** calls **`SyncRunState`** each frame after updating death/time flags. |
-| **`GameOver`** | Timer from balance, kill UI (**Unity UI `Text`**, null-safe), end screens. End-of-round copy updates in **`Update`** (no **`OnGUI`**). **Escape** uses **`GameInput`**. **WebGL**: no **`Application.Quit`**; copy prompts the player to close the tab. Standalone/editor use quit or exit play mode as appropriate. |
+| **`GameOver`** | Timer from balance, kill counters, and end-screen lines use **`UnityEngine.UI`** **`Text`** (null-safe). End-of-round strings refresh from **`Update`** when the outcome or kill counters change (not every frame once stable). **Escape** uses **`GameInput`**. **WebGL**: no **`Application.Quit`**; copy prompts the player to close the tab. Standalone/editor use quit or exit play mode as appropriate. **No runtime `OnGUI`** here. |
 | **`BackgroundMusic`** | Same GameObject as **`AudioSource`**: inspector **`backGroundMusic`**, **`alternateTracks`**, **`playbackVolume`**; random track rules in **Background music** under **Tuning & configuration**. Stops when **`GameSession`** reports the run has ended (treats a missing session as “still playing” until **`GameOver`** has started). |
 
 Enemy behaviour lives under `Assets/_SCRIPTS/Behaviour/` (`EnemyAI`, `GreaterEnemyAI`, `HomingMissileAI`, etc.).
 
 ### Gameplay HUD (uGUI)
 
+**Stack:** Gameplay-facing UI is built with **`UnityEngine.UI` (uGUI)** — not immediate-mode **`OnGUI`**. **`UserInterface`** + **`GameplayHudView`** own the HUD; **`MinimapRadar`** draws the bottom-left radar on the same Canvas stack; **`GameplayPause`** adds a pause overlay to that Canvas. **`GameOver`** uses scene-assigned **`Text`** components for the top-right round timer / kill counters during play and for the end-game scoreboard lines.
+
 - **Where it lives:** The same GameObject that has **`UserInterface`** and **`GameOver`** — often on the **player** in **`GeoWorldMain`**. At runtime, **`UserInterface`** ensures a **`GameplayHudView`** component on that object and creates a child **`GameplayHUD`** with a **Screen Space Overlay** Canvas, **`CanvasScaler`** (reference **2020×1136**, ~**95%** UI scale on 1080p vs. a 1920×1080 reference), bars, an 8-column skill strip, crosshair, low-health vignette, and fullscreen FX **`Image`**s.
-- **Scripts:** `Assets/_SCRIPTS/GUI/GameplayHudView.cs` (layout + widgets), `Assets/_SCRIPTS/GUI/UserInterface.cs` (data + dirty refresh). **`HealSelf`**, **`BloodRitual`**, and **`FreezeTime`** push fullscreen overlays through **`GameplayHudView.Instance`** in **`LateUpdate`** (no **`OnGUI`**).
-- **Customization:** Open **`GeoWorldMain`** in the Editor, select the object with **`UserInterface`**, expand **`GameplayHUD`** after entering Play once (or duplicate that subtree into `Assets/_PREFABS/` if you want a prefab-driven layout). Re-assign **`UserInterface`**’s **`Texture2D`** fields as before for bar/skill art.
+- **Scripts:** `Assets/_SCRIPTS/GUI/GameplayHudView.cs` (layout + widgets), `Assets/_SCRIPTS/GUI/UserInterface.cs` (data + dirty refresh into the view). **`HealSelf`**, **`BloodRitual`**, and **`FreezeTime`** push fullscreen overlays through **`GameplayHudView.Instance`** in **`LateUpdate`**.
+- **Title screen (`Start.unity`):** `GameStart` builds its own **Screen Space Overlay** Canvas in code (`Assets/_SCENES/GameStart.cs`) — also uGUI, not **`OnGUI`**.
+- **Customization (art):** Open **`GeoWorldMain`**, select the object with **`UserInterface`**, and assign the **`Texture2D`** fields in the Inspector (health/mana/exp bars, skill icons, crosshair, frame, blood vignette textures, etc.). No code change needed for simple reskins.
+- **Customization (layout / hierarchy):** The **`GameplayHUD`** subtree is created at runtime by **`GameplayHudView.EnsureBuilt`**. To adjust layout or add widgets, enter **Play** once, copy the generated **`GameplayHUD`** hierarchy (or maintain a prefab under **`Assets/_PREFABS/`** and wire it). If you replace the default hierarchy in the scene, assign a **`GameplayHudView`** reference on **`UserInterface`** so **`EnsureBuilt`** does not overwrite your edits (see class summary on **`UserInterface`**).
 
 ## Tuning & configuration
 
@@ -124,9 +128,8 @@ These reflect how the game was built historically—not necessarily current Unit
 2. **Discovery by tag and `GetComponent`**  
    Many systems still resolve the player by tag **`Player1`**; gameplay/UI paths that were hot refactored cache **`PlayerCharacter`** instead of calling **`GetComponent`** every frame. **`GameSession`** exposes **`IsRunActive`** and the active **`PlayerCharacter`** so audio/skills/HUD do not query **`GameOver`** for death/timer flags.
 
-3. **Dual UI stack**  
-   - HUD and overlays: **`OnGUI`** (`UserInterface`, parts of `GameOver`).  
-   - Some screens/widgets: **`UnityEngine.UI`** (`Text` on `GameOver`).
+3. **UI stack (gameplay)**  
+   **HUD, minimap, mid-round pause overlay, and end-of-run scoreboard** use **`UnityEngine.UI` (uGUI)** — `GameplayHudView`, `UserInterface`, `MinimapRadar`, `GameplayPause`, and `GameOver`’s **`Text`** references. **Immediate-mode `OnGUI`** is **not** used on those paths. (Some **Standard Assets** packages still contain **Editor-only** `OnGUI` in custom **PropertyDrawer**s; that is unrelated to in-game HUD rendering.)
 
 4. **Inheritance for skills**  
    `SkillBasic` base class (mana, cooldown, reference to player); concrete skills (`GeoShot`, `Meteor`, …) override behaviour in `Update` and input.
