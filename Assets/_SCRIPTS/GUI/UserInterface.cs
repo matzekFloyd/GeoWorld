@@ -13,6 +13,7 @@ using UnityEngine;
 /// <item><description>Cooldown max: invariant <c>0.#</c>; empty when max is 0 (no CD row).</description></item>
 /// <item><description>Cooldown remaining (for overlay): same <c>0.#</c> while on cooldown; empty when <c>curCooldown</c> ≤ <c>0.02</c> (same cutoff as <see cref="GameplayHudView"/>), so no misleading <c>0.00</c> when usable.</description></item>
 /// <item><description>Mid-round Escape (release) opens a minimal pause overlay via <see cref="GameplayPause"/>; end-of-run quit copy stays on <see cref="GameOver"/>.</description></item>
+/// <item><description>Recent damage taken (rolling window) and Heal-skill amounts appear as bold text left/right of the crosshair via <see cref="GameplayHudView"/>.</description></item>
 /// </list>
 /// </remarks>
 public class UserInterface : MonoBehaviour

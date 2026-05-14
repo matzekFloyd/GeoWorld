@@ -101,7 +101,10 @@ public sealed class CombatFeedback : MonoBehaviour
             hasDir = true;
 
         if (hud != null)
+        {
             hud.PlayHitTakenFeedback(hasDir, dirX, dirY, centerPeak, edgePeak, 0.16f, reduced);
+            hud.NotifyRecentDamageTaken(amount);
+        }
 
         var dmgPool = FloatingDamageNumberPool.Instance;
         if (dmgPool != null)

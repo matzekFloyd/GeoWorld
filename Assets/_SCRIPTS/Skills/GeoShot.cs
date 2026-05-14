@@ -22,7 +22,7 @@ public class GeoShot : SkillBasic
     {
         if (m_Player == null) return;
         int lv = m_Player.getCurLevel();
-        manacost = 0.85f + lv * 0.38f;
+        manacost = (0.85f + lv * 0.38f) * GameBalanceHelper.SkillManaCostScale;
         geoShotDmg = lv * 18f;
         updateCoolDown();
         

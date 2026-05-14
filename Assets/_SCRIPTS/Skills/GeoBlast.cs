@@ -24,7 +24,7 @@ public class GeoBlast : SkillBasic
         if (m_Player == null) return;
         geoBlastDmg = m_Player.getCurLevel() * 4f;
         projectileCount = m_Player.getCurLevel() * 5;
-        manacost = 6f + m_Player.getCurLevel() * 7.5f;
+        manacost = (6f + m_Player.getCurLevel() * 7.5f) * GameBalanceHelper.SkillManaCostScale;
         updateCoolDown();
 
         if (GameInput.SecondaryFireHeld && requiredMana() && CanUseSkills())

@@ -23,7 +23,7 @@ public class BloodRitual : SkillBasic{
         maxCooldown = 50 / m_Player.getCurLevel();
         bloodTimerCooldown = 1.5f;
         // Gate only (mana is not spent on cast — HP is). Keep low so the skill is usable when you are actually dry.
-        manacost = 3f + m_Player.getCurLevel() * 2f;
+        manacost = (3f + m_Player.getCurLevel() * 2f) * GameBalanceHelper.SkillManaCostScale;
         updateCoolDown();
 
 

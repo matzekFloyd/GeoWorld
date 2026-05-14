@@ -24,7 +24,7 @@ public class HealSelf : SkillBasic {
         if (m_Player == null) return;
         maxCooldown = 4;
         healTimerCooldown = m_Player.getCurLevel() / 2f;
-        manacost = m_Player.getCurLevel() * 32f;
+        manacost = m_Player.getCurLevel() * 32f * GameBalanceHelper.SkillManaCostScale;
         healingAmount = 55f + m_Player.getCurLevel() * 110f;
         updateCoolDown();
 
