@@ -6,6 +6,9 @@ public class PlayerCharacter : BaseCharacter {
     /// <summary>With Geo Mania (level 10), HP may exceed <see cref="maxHealth"/> up to this multiple (overheal).</summary>
     public const float GeoManiaOverhealMaxMultiplier = 2f;
 
+    /// <summary>Blood Ritual may push <see cref="curMana"/> up to this × <see cref="maxMana"/> (overmana).</summary>
+    public const float BloodRitualOvermanaMaxMultiplier = 2f;
+
     private GameObject enemy;
 
     public float curMana;
@@ -48,6 +51,10 @@ public class PlayerCharacter : BaseCharacter {
     [Header("Overheal decay (Geo Mania)")]
     [Tooltip("HP removed per second only from HP above nominal max; stops when at or below maxHealth.")]
     [SerializeField] float overhealDegenerationPerSecond = 4f;
+
+    [Header("Overmana decay (Blood Ritual)")]
+    [Tooltip("Mana removed per second only from mana above nominal max; stops when at or below maxMana.")]
+    [SerializeField] float overmanaDegenerationPerSecond = 4f;
 
 
 
@@ -108,6 +115,7 @@ public class PlayerCharacter : BaseCharacter {
         regnerateHealth(GetPassiveHealthRegenPerSecond() * Time.deltaTime);
 
         ApplyOverhealDecay();
+        ApplyOvermanaDecay();
 
         //FÜR TESTZWECKE
         if (GameInput.DebugInstantLevelUpUp && GameSession.Instance != null && GameSession.Instance.IsRunActive)
@@ -137,11 +145,19 @@ public class PlayerCharacter : BaseCharacter {
         {
             curLevel += 1;
 
-            maxHealth += GameBalanceHelper.RollLevelUpMaxHealthDelta(curLevel);
-            curHealth = maxHealth;
+            float dHealth = GameBalanceHelper.RollLevelUpMaxHealthDelta(curLevel);
+            maxHealth += dHealth;
+            curHealth += dHealth;
+            float hpCap = GetHealthUpperClamp();
+            if (curHealth > hpCap)
+                curHealth = hpCap;
 
-            maxMana += GameBalanceHelper.RollLevelUpMaxManaDelta(curLevel);
-            curMana = maxMana;
+            float dMana = GameBalanceHelper.RollLevelUpMaxManaDelta(curLevel);
+            maxMana += dMana;
+            curMana += dMana;
+            float manaCap = maxMana * BloodRitualOvermanaMaxMultiplier;
+            if (curMana > manaCap)
+                curMana = manaCap;
 
             curExp = 0;
 
@@ -182,28 +198,46 @@ public class PlayerCharacter : BaseCharacter {
         changeCurrentHealth(-Mathf.Min(overhead, remove));
     }
 
+    void ApplyOvermanaDecay()
+    {
+        if (overmanaDegenerationPerSecond <= 0f)
+            return;
+        float overhead = curMana - maxMana;
+        if (overhead <= 0.0001f)
+            return;
+        float remove = overmanaDegenerationPerSecond * Time.deltaTime;
+        curMana -= Mathf.Min(overhead, remove);
+        if (curMana < 0f)
+            curMana = 0f;
+    }
+
+    /// <summary>Mana from Blood Ritual only: can exceed <see cref="maxMana"/> up to <see cref="BloodRitualOvermanaMaxMultiplier"/>.</summary>
+    public void AddManaFromBloodRitual(float amount)
+    {
+        if (amount <= 0f || maxMana < 0.0001f)
+            return;
+        float cap = maxMana * BloodRitualOvermanaMaxMultiplier;
+        curMana = Mathf.Min(curMana + amount, cap);
+    }
+
     public void changeCurrentMana(float change)
     {
         if (change < 0f)
-            _lastManaSpendTime = Time.time;
-
-        curMana += change;
-
-        if (curMana < 0)
-            curMana = 0;
-
-        if (curMana == 0)
         {
-
+            _lastManaSpendTime = Time.time;
+            curMana += change;
+            if (curMana < 0f)
+                curMana = 0f;
+        }
+        else if (change > 0f)
+        {
+            if (curMana >= maxMana)
+                return;
+            curMana = Mathf.Min(curMana + change, maxMana);
         }
 
-        if (curMana > maxMana)
-            curMana = maxMana;
-
-        if (maxMana < 1)
-            maxMana = 1;
-
-
+        if (maxMana < 1f)
+            maxMana = 1f;
     }
 
     public float calculateManaRegeneration(int curLevel)

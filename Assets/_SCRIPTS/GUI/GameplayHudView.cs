@@ -72,6 +72,8 @@ public sealed class GameplayHudView : MonoBehaviour
     float _lastExpFill = -1f;
     /// <summary>-1 unset, 0 normal HP bar tint, 1 overheal (darker red).</summary>
     sbyte _lastHealthOverhealTint = -1;
+    /// <summary>-1 unset, 0 normal mana bar tint, 1 overmana (darker blue).</summary>
+    sbyte _lastManaOvermanaTint = -1;
     readonly string[] _lastSkillMana = new string[8];
     readonly string[] _lastSkillDmg = new string[8];
     readonly string[] _lastSkillHeal = new string[8];
@@ -174,6 +176,8 @@ public sealed class GameplayHudView : MonoBehaviour
         _lastBloodTier = -1;
         _lastHealthTxt = _lastManaTxt = _lastExpTxt = null;
         _lastHealthFill = _lastManaFill = _lastExpFill = -1f;
+        _lastHealthOverhealTint = -1;
+        _lastManaOvermanaTint = -1;
         for (int i = 0; i < 8; i++)
         {
             _lastSkillMana[i] = null;
@@ -579,6 +583,8 @@ public sealed class GameplayHudView : MonoBehaviour
 
     static readonly Color HealthFillDefault = new Color(0.85f, 0.2f, 0.2f);
     static readonly Color HealthFillOverheal = new Color(0.48f, 0.09f, 0.09f);
+    /// <summary>Tint on mana bar fill when over nominal max (Blood Ritual overmana).</summary>
+    static readonly Color ManaFillOvermanaTint = new Color(0.12f, 0.24f, 0.58f, 1f);
 
     public void RefreshGameplay(
         bool showGameplay,
@@ -607,6 +613,7 @@ public sealed class GameplayHudView : MonoBehaviour
             SetHudVisible(false);
             _lastBloodTier = -1;
             _lastHealthOverhealTint = -1;
+            _lastManaOvermanaTint = -1;
             return;
         }
         SetHudVisible(true);
@@ -649,11 +656,21 @@ public sealed class GameplayHudView : MonoBehaviour
             _lastManaTxt = mnTxt;
             _manaValueText.text = mnTxt;
         }
-        float mFill = maxMana > 0 ? Mathf.Clamp01(curMana / maxMana) : 0f;
+        bool overmana = curMana > maxMana + 0.5f;
+        float mFill = overmana
+            ? 1f
+            : (maxMana > 0f ? Mathf.Clamp01(curMana / maxMana) : 0f);
         if (Mathf.Abs(mFill - _lastManaFill) > 0.0005f && _manaFill != null)
         {
             _lastManaFill = mFill;
             _manaFill.fillAmount = mFill;
+        }
+
+        sbyte overmanaTint = overmana ? (sbyte)1 : (sbyte)0;
+        if (overmanaTint != _lastManaOvermanaTint && _manaFill != null)
+        {
+            _lastManaOvermanaTint = overmanaTint;
+            _manaFill.color = overmanaTint != 0 ? ManaFillOvermanaTint : Color.white;
         }
 
         if (curLevel < maxLevel)

@@ -49,21 +49,14 @@ public class BloodRitual : SkillBasic{
 
     public void convertHealthToMana()
     {
-        float healthToManaValue;
+        float healthToManaValue = m_Player.curHealth / 3.33f;
+        if (healthToManaValue <= 0.0001f)
+            return;
 
-        if (m_Player.curMana >= m_Player.maxMana)
-        {
-            healthToManaValue = 0;
-        } else
-        {
-            healthToManaValue = m_Player.curHealth / 3.33f;
-
-            m_Player.curHealth -= healthToManaValue;
-            m_Player.changeCurrentMana(healthToManaValue);
-            if (healthToManaValue > 0.0001f)
-                GameplaySfx.Instance?.PlayBloodRitualCast();
-        }
-     }
+        m_Player.curHealth -= healthToManaValue;
+        m_Player.AddManaFromBloodRitual(healthToManaValue);
+        GameplaySfx.Instance?.PlayBloodRitualCast();
+    }
 
     void LateUpdate()
     {
