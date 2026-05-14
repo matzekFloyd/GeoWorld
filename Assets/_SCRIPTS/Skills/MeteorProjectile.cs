@@ -70,7 +70,10 @@ public class MeteorProjectile : Meteor {
                 if (pools != null)
                     pools.Acquire(fxRoot, pos, rot, null);
                 else
-                    Instantiate(explosionPrefab, pos, rot);
+                {
+                    var fx = Instantiate(explosionPrefab, pos, rot);
+                    PooledVfxSpawnReset.Apply(fx.gameObject);
+                }
             }
 
             Collider[] colliders;
