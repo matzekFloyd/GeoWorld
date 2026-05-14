@@ -62,6 +62,13 @@ public class PlayerCharacter : BaseCharacter {
     // Use this for initialization
     void Start () {
 
+        if (GetComponent<PlayerFirstPersonRunGate>() == null)
+        {
+            if (GetComponent<UnityStandardAssets.Characters.FirstPerson.FirstPersonController>() != null
+                || GetComponent<UnityStandardAssets.Characters.FirstPerson.RigidbodyFirstPersonController>() != null)
+                gameObject.AddComponent<PlayerFirstPersonRunGate>();
+        }
+
         enemyGenerator = GameObject.FindGameObjectWithTag("Spawn");
         if (enemyGenerator == null)
             Debug.LogWarning("GeoWorld: No GameObject with tag 'Spawn' found. Enemy wave scaling (LevelUp → EnemyGenerator) will not work.");
