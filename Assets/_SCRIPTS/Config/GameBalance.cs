@@ -97,12 +97,18 @@ public class GameBalance : ScriptableObject
     [Range(0.5f, 1f)]
     public float levelUpMaxManaGainFloorFractionOfBaseline = 0.82f;
 
+    [Header("Player skills")]
+    [Tooltip("Multiplies per-frame skill mana costs (primary/secondary and cooldown skills). Below 1 eases pressure when mana regen is modest.")]
+    [Range(0.35f, 1f)]
+    public float skillManaCostScale = 0.78f;
+
     void OnValidate()
     {
         levelUpMaxHealthGainMinMultiplier = Mathf.Clamp(levelUpMaxHealthGainMinMultiplier, 0.05f, 3f);
         levelUpMaxHealthGainMaxMultiplier = Mathf.Clamp(levelUpMaxHealthGainMaxMultiplier, 0.05f, 3f);
         levelUpMaxManaGainMinMultiplier = Mathf.Clamp(levelUpMaxManaGainMinMultiplier, 0.05f, 3f);
         levelUpMaxManaGainMaxMultiplier = Mathf.Clamp(levelUpMaxManaGainMaxMultiplier, 0.05f, 3f);
+        skillManaCostScale = Mathf.Clamp(skillManaCostScale, 0.35f, 1f);
     }
 }
 
@@ -170,6 +176,20 @@ public static class GameBalanceHelper
     public static float BossBonusXpFlat => Active != null ? Active.bossBonusXpFlat : 250f;
 
     public static int BossScoreBonusOnKill => Active != null ? Active.bossScoreBonusOnKill : 500;
+
+    /// <summary>Scales recurring skill <c>manacost</c> values (see individual skills' <c>Update</c>). Default eases mana pressure vs regen.</summary>
+    public static float SkillManaCostScale
+    {
+        get
+        {
+            if (Active == null)
+                return 0.78f;
+            float s = Active.skillManaCostScale;
+            if (s <= 0.05f || s > 1f)
+                return 0.78f;
+            return s;
+        }
+    }
 
     /// <summary>Target living normal + pooled wave enemies from balance asset (with high-level curve).</summary>
     public static int GetDesiredLivingEnemyCount(int playerLevel)

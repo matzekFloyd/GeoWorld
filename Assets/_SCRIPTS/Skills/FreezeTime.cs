@@ -58,7 +58,7 @@ public class FreezeTime : SkillBasic
         freezeTextureTimerCooldown = 1.5f;
         int lvl = Mathf.Max(1, m_Player.getCurLevel());
         duration = Mathf.Max(closeRangeFreezeMinimumSeconds, lvl * closeRangeFreezeSecondsPerLevel);
-        manacost = 48f + m_Player.getCurLevel() * 38f;
+        manacost = (48f + m_Player.getCurLevel() * 38f) * GameBalanceHelper.SkillManaCostScale;
         updateCoolDown();
 
 
