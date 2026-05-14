@@ -156,7 +156,7 @@ These reflect how the game was built historically—not necessarily current Unit
    `EnemyGenerator` uses an enum `State` and a `switch` in `Update` rather than coroutines or async.
 
 6. **Balancing and TODOs in-repo**  
-   Runtime tuning prefers **`GameBalance`** + **`GameBalanceHelper`** over scattered magic numbers. See `Assets/TO-DO.txt` (German): boss tuning, damage floaters, lifesteal edge cases, meteor VFX vs level, etc.
+   Runtime tuning prefers **`GameBalance`** + **`GameBalanceHelper`** over scattered magic numbers. Polish and balance follow-ups are tracked as **GitHub issues** (see **`CONTRIBUTING.md` → Polish backlog** and **`Assets/TO-DO.txt`** for the index table).
 
 ## Requirements
 
@@ -285,7 +285,7 @@ The workflow uses `unityVersion: auto` (reads `ProjectSettings/ProjectVersion.tx
 
 ## Contributing / picking it back up
 
-For pull requests, scope, and third-party asset notes, see **[`CONTRIBUTING.md`](CONTRIBUTING.md)**. For reporting security issues in this repo’s code or automation, see **[`SECURITY.md`](SECURITY.md)**.
+For pull requests, scope, and third-party asset notes, see **[`CONTRIBUTING.md`](CONTRIBUTING.md)** — including **Polish backlog (GitHub)** and **good first issue** polish starters linked from there. For reporting security issues in this repo’s code or automation, see **[`SECURITY.md`](SECURITY.md)**.
 
 1. Open **`GeoWorldMain`** from `Assets/_SCENES` (or run from **`Start`** and confirm the title screen with any key or mouse click).  
 2. Optional: create a **`Game Balance`** asset (**Assets → Create → GeoWorld → Game Balance**) and assign it on the **`GameOver`** component’s **`gameBalance`** field (see **Game Balance asset** under **Tuning & configuration**).  

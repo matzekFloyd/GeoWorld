@@ -1,27 +1,35 @@
-TO-DO Liste
+# Backlog index (polish + balance)
 
-HOHE PRIORITÄT:
+Source of truth: GitHub Issues ? this file is only a short pointer for Unity Editor / local habit.
 
-- BOSS ENTWEDER BEIM COUNTER MEHR HOCHZÄHLEN, ODER STÄRKER, BZW IRGENDEINEN GRUND DER IHN KILLENSWERT MACHT
+- Meta (migration checklist, closed when done): https://github.com/matzekFloyd/GeoWorld/issues/53
+- QoL / polish epic: https://github.com/matzekFloyd/GeoWorld/issues/43
+- Good first issues (polish): https://github.com/matzekFloyd/GeoWorld/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22
 
-MITTLERE PRIORITÄT
-- DMG Anzeige von wo er kommt
-- Links+Rechts neben fadenkreuz dmgtaken und heal werte anzeigen lassen
+## Former bullets ? issues
 
-NIEDRIGE PRIORITÄT
+| Topic | Issue |
+|------|-------|
+| Boss incentive / counter / power | https://github.com/matzekFloyd/GeoWorld/issues/77 |
+| Damage float: direction / source | https://github.com/matzekFloyd/GeoWorld/issues/78 |
+| Crosshair-adjacent damage + heal | https://github.com/matzekFloyd/GeoWorld/issues/79 |
+| Blood Ritual mana bar past-max flash | https://github.com/matzekFloyd/GeoWorld/issues/80 |
+| Lifesteal + spray / GeoShot | https://github.com/matzekFloyd/GeoWorld/issues/81 |
+| Meteor explosion radius vs level | https://github.com/matzekFloyd/GeoWorld/issues/82 (+ #25) |
+| Blood stain fade in/out | https://github.com/matzekFloyd/GeoWorld/issues/83 (+ #29) |
+| Freeze Time: radius not global | https://github.com/matzekFloyd/GeoWorld/issues/84 (+ #30) |
+| Battle log | https://github.com/matzekFloyd/GeoWorld/issues/85 |
+| Minimum enemy count up | https://github.com/matzekFloyd/GeoWorld/issues/86 |
+| Lifesteal weaker (balance) | https://github.com/matzekFloyd/GeoWorld/issues/87 |
+| Legacy ?error see screenshot? | https://github.com/matzekFloyd/GeoWorld/issues/88 |
 
-- Wenn per Bloodritual Mana über maxmana erhalten werden würde, blinkt Balken kurz über Maxlänge hinaus
-- lifesteal funktioniert bei sprayshot nicht zu 100%
-- Größe des sichtbaren Explosionsradius von Meteor an Lvl anpassen
-- Blutflecken ein und ausfaden
-- FreezeTime nicht auf alle, sondern in einem Umkreis um Player
-- BattleLog
+## Descoped / already in game
 
+- **Max level 50:** Already set in `PlayerCharacter` (`maxLevel`); no open issue.
 
+## Old German list (archived)
 
-BALANCING
-
-- Max Level auf 50 setzen
-- Gegner Zahl minimal rauf drehen
-- error siehe Screenshot
-- lifesteal ein wenig schwächer machen
+HOHE PRIORIT?T: Boss wertvoller machen / Counter / St?rke ? ? #77  
+MITTLER: DMG Richtung; Kreuz ? DMG/heal Anzeige ? ? #78, #79  
+NIEDRIG: Bloodritual Balken ?ber max; Lifesteal Spray; Meteor-Radius; Blutflecken fade; Freeze Umkreis; BattleLog ? ? #80?#85  
+BALANCING: Gegnerzahl; Screenshot-Error; Lifesteal schw?cher ? ? #86?#88; Max 50 erledigt.
