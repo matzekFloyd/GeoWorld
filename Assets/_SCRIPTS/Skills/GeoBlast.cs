@@ -62,6 +62,7 @@ public class GeoBlast : SkillBasic
                 ? pools.Acquire(geoBlastProjectile, shotSpawnPosition, camPos.rotation, null)
                 : Instantiate(geoBlastProjectile, shotSpawnPosition, camPos.rotation);
 
+            GeoWorldObjectPools.ApplyProjectileGravityIfApplicable(shot);
             shot.GetComponent<Rigidbody>().AddForce(shotDirectionNormalized * shotspeed, ForceMode.Impulse);
         }
 

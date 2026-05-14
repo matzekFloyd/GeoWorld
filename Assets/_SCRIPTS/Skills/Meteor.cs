@@ -46,7 +46,14 @@ public class Meteor : SkillBasic {
             ? pools.Acquire(meteor, camPos.position + camPos.forward * 5, camPos.rotation, null)
             : Instantiate(meteor, camPos.position + camPos.forward * 5, camPos.rotation);
 
-        shot.GetComponent<Rigidbody>().AddForce(camPos.forward * 50, ForceMode.Impulse);
+        GeoWorldObjectPools.ApplyProjectileGravityIfApplicable(shot);
+        var rb = shot.GetComponent<Rigidbody>();
+        if (rb != null)
+        {
+            // Impulse Δv = J/m — scale J with m so heavier meteors keep similar launch speed after pool mass tuning.
+            const float forwardImpulsePerUnitMass = 50f;
+            rb.AddForce(camPos.forward * (forwardImpulsePerUnitMass * rb.mass), ForceMode.Impulse);
+        }
     }
 
     public float getMeteorDamage()

@@ -51,6 +51,7 @@ public class GeoShot : SkillBasic
         GameObject shot = pools != null
             ? pools.Acquire(geoShotProjectile, camPos.position + camPos.forward * 5, camPos.rotation, null)
             : Instantiate(geoShotProjectile, camPos.position + camPos.forward * 5, camPos.rotation);
+        GeoWorldObjectPools.ApplyProjectileGravityIfApplicable(shot);
         shot.GetComponent<Rigidbody>().AddForce(camPos.forward * 10, ForceMode.Impulse);
     }
 
@@ -65,6 +66,7 @@ public class GeoShot : SkillBasic
             GameObject shot = pools != null
                 ? pools.Acquire(geoShotProjectile, camPos.position + camPos.forward * 5 * 5 * i, camPos.rotation, null)
                 : Instantiate(geoShotProjectile, camPos.position + camPos.forward * 5 * 5 * i, camPos.rotation);
+            GeoWorldObjectPools.ApplyProjectileGravityIfApplicable(shot);
             shot.GetComponent<Rigidbody>().AddForce(camPos.forward * 10f, ForceMode.Impulse);
         }
     }

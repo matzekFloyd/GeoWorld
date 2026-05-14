@@ -50,6 +50,9 @@ public sealed class GeoWorldObjectPools : MonoBehaviour
             s_Instance = null;
     }
 
+    /// <summary>Meteor rigidbody mass on each spawn (heavier than typical projectiles so the same impulse arcs more).</summary>
+    const float MeteorProjectileRigidbodyMass = 8f;
+
     /// <summary>Spawn or reuse an instance. Resets <see cref="Rigidbody"/> velocity when present and reapplies pooled particle VFX.</summary>
     public GameObject Acquire(GameObject prefab, Vector3 position, Quaternion rotation, Transform parent)
     {
@@ -72,6 +75,7 @@ public sealed class GeoWorldObjectPools : MonoBehaviour
         inst.transform.SetParent(parent, false);
         inst.transform.SetPositionAndRotation(position, rotation);
         ResetRigidbody(inst);
+        ApplyProjectileGravityIfApplicable(inst);
         inst.SetActive(true);
         PooledVfxSpawnReset.Apply(inst);
         return inst;
@@ -115,6 +119,38 @@ public sealed class GeoWorldObjectPools : MonoBehaviour
             return;
         rb.linearVelocity = Vector3.zero;
         rb.angularVelocity = Vector3.zero;
+    }
+
+    /// <summary>
+    /// Enables <see cref="Rigidbody.useGravity"/> on all rigidbodies under pooled instances that are gameplay
+    /// projectiles (GeoShot / GeoBlast / Meteor / homing missiles). Skips enemies and other pooled prefabs.
+    /// Meteors also get a higher minimum <see cref="Rigidbody.mass"/> so the same launch impulse produces a shorter, heavier arc.
+    /// Safe to call after non-pool <c>Instantiate</c> as well.
+    /// </summary>
+    public static void ApplyProjectileGravityIfApplicable(GameObject inst)
+    {
+        if (inst == null || !IsProjectileHierarchy(inst))
+            return;
+
+        var bodies = inst.GetComponentsInChildren<Rigidbody>(true);
+        var meteor = inst.GetComponentInChildren<MeteorProjectile>(true) != null;
+        for (int i = 0; i < bodies.Length; i++)
+        {
+            var rb = bodies[i];
+            if (rb == null)
+                continue;
+            rb.useGravity = true;
+            if (meteor)
+                rb.mass = Mathf.Max(rb.mass, MeteorProjectileRigidbodyMass);
+        }
+    }
+
+    static bool IsProjectileHierarchy(GameObject root)
+    {
+        return root.GetComponentInChildren<GeoShotProjectile>(true) != null
+            || root.GetComponentInChildren<GeoBlastProjectile>(true) != null
+            || root.GetComponentInChildren<MeteorProjectile>(true) != null
+            || root.GetComponentInChildren<HomingMissileAI>(true) != null;
     }
 
     /// <summary>Instantiate-count instances inactive into the pool (Editor/runtime tuning).</summary>
