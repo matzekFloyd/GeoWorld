@@ -1,10 +1,20 @@
-﻿using UnityEngine;
+﻿using System.Globalization;
+using UnityEngine;
 
 /// <summary>
 /// Drives the uGUI <see cref="GameplayHudView"/> with player/skill data. Layout is created under a child
 /// <c>GameplayHUD</c> Canvas at runtime; assign a <see cref="GameplayHudView"/> on this object only if you
 /// customize the hierarchy in the Editor.
 /// </summary>
+/// <remarks>
+/// <b>HUD number conventions</b> (see <see cref="BuildSkillStrings"/>):
+/// <list type="bullet">
+/// <item><description>Mana cost, damage, heal amounts: whole numbers (<c>F0</c>).</description></item>
+/// <item><description>Cooldown max: invariant <c>0.#</c>; empty when max is 0 (no CD row).</description></item>
+/// <item><description>Cooldown remaining (for overlay): same <c>0.#</c> while on cooldown; empty when <c>curCooldown</c> ≤ <c>0.02</c> (same cutoff as <see cref="GameplayHudView"/>), so no misleading <c>0.00</c> when usable.</description></item>
+/// <item><description>GeoPhysics regen line keeps one decimal before <c>/s</c>.</description></item>
+/// </list>
+/// </remarks>
 public class UserInterface : MonoBehaviour
 {
     const int SkillCount = 8;
@@ -189,59 +199,59 @@ public class UserInterface : MonoBehaviour
 
             if (i == 0 && m_GeoShot != null)
             {
-                _skillMana[i] = m_GeoShot.manacost.ToString("F0");
-                _skillDmg[i] = m_GeoShot.getGeoShotDmg().ToString();
+                _skillMana[i] = FormatHudWhole(m_GeoShot.manacost);
+                _skillDmg[i] = FormatHudWhole(m_GeoShot.getGeoShotDmg());
                 _skillHeal[i] = "";
-                _skillCdMax[i] = m_GeoShot.maxCooldown.ToString("F2");
-                _skillCdCur[i] = m_GeoShot.curCooldown.ToString("F2");
+                _skillCdMax[i] = FormatHudCooldownSeconds(m_GeoShot.maxCooldown);
+                _skillCdCur[i] = FormatHudCooldownCurrent(m_GeoShot.curCooldown);
             }
             else if (i == 1 && m_GeoBlast != null)
             {
-                _skillMana[i] = m_GeoBlast.manacost.ToString("F0");
-                _skillDmg[i] = m_GeoBlast.getGeoBlastDmg().ToString();
+                _skillMana[i] = FormatHudWhole(m_GeoBlast.manacost);
+                _skillDmg[i] = FormatHudWhole(m_GeoBlast.getGeoBlastDmg());
                 _skillHeal[i] = "";
-                _skillCdMax[i] = m_GeoBlast.maxCooldown.ToString("F2");
-                _skillCdCur[i] = m_GeoBlast.curCooldown.ToString("F2");
+                _skillCdMax[i] = FormatHudCooldownSeconds(m_GeoBlast.maxCooldown);
+                _skillCdCur[i] = FormatHudCooldownCurrent(m_GeoBlast.curCooldown);
             }
             else if (i == 2 && m_GeoPhysics != null)
             {
                 _skillMana[i] = "";
                 _skillDmg[i] = "";
-                _skillHeal[i] = m_GeoPhysics.getGeoPhysicsHealthReg().ToString("F1") + "/s";
+                _skillHeal[i] = m_GeoPhysics.getGeoPhysicsHealthReg().ToString("F1", CultureInfo.InvariantCulture) + "/s";
                 _skillCdMax[i] = "";
                 _skillCdCur[i] = "";
             }
             else if (i == 3 && m_HealSelf != null)
             {
-                _skillMana[i] = m_HealSelf.manacost.ToString("F0");
+                _skillMana[i] = FormatHudWhole(m_HealSelf.manacost);
                 _skillDmg[i] = "";
-                _skillHeal[i] = m_HealSelf.getHealingAmount().ToString("F0");
-                _skillCdMax[i] = m_HealSelf.maxCooldown.ToString("F0");
-                _skillCdCur[i] = m_HealSelf.curCooldown.ToString("F1");
+                _skillHeal[i] = FormatHudWhole(m_HealSelf.getHealingAmount());
+                _skillCdMax[i] = FormatHudCooldownSeconds(m_HealSelf.maxCooldown);
+                _skillCdCur[i] = FormatHudCooldownCurrent(m_HealSelf.curCooldown);
             }
             else if (i == 4 && m_Meteor != null)
             {
-                _skillMana[i] = m_Meteor.manacost.ToString("F0");
-                _skillDmg[i] = m_Meteor.getMeteorDamage().ToString("F0");
+                _skillMana[i] = FormatHudWhole(m_Meteor.manacost);
+                _skillDmg[i] = FormatHudWhole(m_Meteor.getMeteorDamage());
                 _skillHeal[i] = "";
-                _skillCdMax[i] = m_Meteor.maxCooldown.ToString("F1");
-                _skillCdCur[i] = m_Meteor.curCooldown.ToString("F1");
+                _skillCdMax[i] = FormatHudCooldownSeconds(m_Meteor.maxCooldown);
+                _skillCdCur[i] = FormatHudCooldownCurrent(m_Meteor.curCooldown);
             }
             else if (i == 5 && m_BloodRitual != null)
             {
-                _skillMana[i] = m_BloodRitual.manacost.ToString("F0");
+                _skillMana[i] = FormatHudWhole(m_BloodRitual.manacost);
                 _skillDmg[i] = "";
                 _skillHeal[i] = "";
-                _skillCdMax[i] = m_BloodRitual.maxCooldown.ToString("F0");
-                _skillCdCur[i] = m_BloodRitual.curCooldown.ToString("F1");
+                _skillCdMax[i] = FormatHudCooldownSeconds(m_BloodRitual.maxCooldown);
+                _skillCdCur[i] = FormatHudCooldownCurrent(m_BloodRitual.curCooldown);
             }
             else if (i == 6 && m_FreezeTime != null)
             {
-                _skillMana[i] = m_FreezeTime.manacost.ToString("F0");
+                _skillMana[i] = FormatHudWhole(m_FreezeTime.manacost);
                 _skillDmg[i] = "-";
                 _skillHeal[i] = "-";
-                _skillCdMax[i] = m_FreezeTime.maxCooldown.ToString("F0");
-                _skillCdCur[i] = m_FreezeTime.curCooldown.ToString("F1");
+                _skillCdMax[i] = FormatHudCooldownSeconds(m_FreezeTime.maxCooldown);
+                _skillCdCur[i] = FormatHudCooldownCurrent(m_FreezeTime.curCooldown);
             }
             else if (i == 7)
             {
@@ -252,5 +262,27 @@ public class UserInterface : MonoBehaviour
                 _skillCdCur[i] = "";
             }
         }
+    }
+
+    /// <summary>Whole numbers for mana, damage, heal amounts (see class remarks).</summary>
+    static string FormatHudWhole(float value)
+    {
+        return value.ToString("F0", CultureInfo.InvariantCulture);
+    }
+
+    /// <summary>Cooldown seconds (max); invariant <c>0.#</c>.</summary>
+    static string FormatHudCooldownSeconds(float seconds)
+    {
+        if (seconds <= 0f)
+            return "";
+        return seconds.ToString("0.#", CultureInfo.InvariantCulture);
+    }
+
+    /// <summary>Remaining cooldown for overlay parsing; empty when ready (no <c>0.00</c> noise). Uses the same ≤0.02s cutoff as cooldown visuals.</summary>
+    static string FormatHudCooldownCurrent(float curCooldown)
+    {
+        if (curCooldown <= 0.02f)
+            return "";
+        return curCooldown.ToString("0.#", CultureInfo.InvariantCulture);
     }
 }

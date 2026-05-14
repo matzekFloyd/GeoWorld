@@ -16,6 +16,9 @@ public sealed class GameplayHudView : MonoBehaviour
 
     static readonly int[] SkillMinLevels = { 1, 1, 1, 2, 4, 6, 8, 10 };
 
+    /// <summary>Multiplier applied after <see cref="Image.SetNativeSize"/> on the crosshair (1 = texture pixel size at current Canvas scale).</summary>
+    const float CrosshairDisplayScale = 0.5f;
+
     Canvas _canvas;
     Text _classTitleText;
     Text _levelText;
@@ -180,6 +183,8 @@ public sealed class GameplayHudView : MonoBehaviour
             return;
         _crosshair.sprite = sprite;
         _crosshair.SetNativeSize();
+        var rt = _crosshair.rectTransform;
+        rt.sizeDelta *= CrosshairDisplayScale;
     }
 
     public void ApplyBarSprites(Sprite health, Sprite mana, Sprite exp)
