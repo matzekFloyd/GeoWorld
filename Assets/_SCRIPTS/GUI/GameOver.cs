@@ -120,6 +120,17 @@ public class GameOver : MonoBehaviour {
         t.verticalOverflow = VerticalWrapMode.Overflow;
     }
 
+    /// <summary>
+    /// Rounded whole seconds (same as the legacy HUD) as <c>m:ss</c> for readability on long rounds.
+    /// </summary>
+    static string FormatRoundCountdownForHud(float timeLeftSeconds)
+    {
+        int total = Mathf.Max(0, Mathf.RoundToInt(timeLeftSeconds));
+        int minutes = total / 60;
+        int seconds = total % 60;
+        return minutes + ":" + seconds.ToString("00");
+    }
+
     // Update is called once per frame
     void Update () {
 
@@ -162,7 +173,7 @@ public class GameOver : MonoBehaviour {
         {
             timeLeft -= Time.deltaTime;
             if (textTimer != null)
-                textTimer.text = "Time left: " + Mathf.Round(timeLeft);
+                textTimer.text = "Time left: " + FormatRoundCountdownForHud(timeLeft);
             if (textEnemyCounter != null)
                 textEnemyCounter.text = "Enemies killed: " + enemyKillCounter;
             if (textGreaterEnemyCounter != null)
