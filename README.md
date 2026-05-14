@@ -1,10 +1,6 @@
 # 🌍 GeoWorld
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-
-[![Unity CI](https://github.com/matzekFloyd/GeoWorld/actions/workflows/unity-ci.yml/badge.svg)](https://github.com/matzekFloyd/GeoWorld/actions/workflows/unity-ci.yml)
-
-[![WebGL — Netlify & GitHub releases](https://github.com/matzekFloyd/GeoWorld/actions/workflows/webgl-netlify.yml/badge.svg)](https://github.com/matzekFloyd/GeoWorld/actions/workflows/webgl-netlify.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) [![Unity CI](https://github.com/matzekFloyd/GeoWorld/actions/workflows/unity-ci.yml/badge.svg)](https://github.com/matzekFloyd/GeoWorld/actions/workflows/unity-ci.yml) [![WebGL — Netlify & GitHub releases](https://github.com/matzekFloyd/GeoWorld/actions/workflows/webgl-netlify.yml/badge.svg)](https://github.com/matzekFloyd/GeoWorld/actions/workflows/webgl-netlify.yml)
 
 Unity **6** project (**6000.4.5f1**). A third-person style **survival / horde** prototype built around a **GeoMancer** player: manage health, mana, and XP on a timer while enemies scale with your level.
 
