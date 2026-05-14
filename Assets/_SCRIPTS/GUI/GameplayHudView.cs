@@ -187,6 +187,9 @@ public sealed class GameplayHudView : MonoBehaviour
             _canvas.gameObject.SetActive(visible);
     }
 
+    /// <summary>HUD canvas rect (null until <see cref="EnsureBuilt"/> has completed).</summary>
+    public RectTransform HudCanvasRect => _built && _canvas != null ? (RectTransform)_canvas.transform : null;
+
     public void ApplyCrosshair(Sprite sprite)
     {
         if (_crosshair == null || sprite == null)

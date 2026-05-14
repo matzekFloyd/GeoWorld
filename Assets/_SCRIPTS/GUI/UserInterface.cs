@@ -12,7 +12,7 @@ using UnityEngine;
 /// <item><description>Mana cost, damage, heal amounts: whole numbers (<c>F0</c>).</description></item>
 /// <item><description>Cooldown max: invariant <c>0.#</c>; empty when max is 0 (no CD row).</description></item>
 /// <item><description>Cooldown remaining (for overlay): same <c>0.#</c> while on cooldown; empty when <c>curCooldown</c> ≤ <c>0.02</c> (same cutoff as <see cref="GameplayHudView"/>), so no misleading <c>0.00</c> when usable.</description></item>
-/// <item><description>Non-applicable damage/heal cells (e.g. Freeze Time) use <see cref="HudNotApplicableStat"/> instead of a bare hyphen.</description></item>
+/// <item><description>Mid-round Escape (release) opens a minimal pause overlay via <see cref="GameplayPause"/>; end-of-run quit copy stays on <see cref="GameOver"/>.</description></item>
 /// </list>
 /// </remarks>
 public class UserInterface : MonoBehaviour
@@ -44,6 +44,7 @@ public class UserInterface : MonoBehaviour
 
     GameplayHudView _hud;
     MinimapRadar _minimap;
+    GameplayPause _gameplayPause;
 
     readonly string[] _keyLabels = new string[SkillCount];
     readonly Sprite[] _skillIcons = new Sprite[SkillCount];
@@ -88,6 +89,9 @@ public class UserInterface : MonoBehaviour
             gameObject.AddComponent<MinimapRadar>();
         if (GetComponent<GameplaySfx>() == null)
             gameObject.AddComponent<GameplaySfx>();
+        _gameplayPause = GetComponent<GameplayPause>();
+        if (_gameplayPause == null)
+            _gameplayPause = gameObject.AddComponent<GameplayPause>();
     }
 
     void Start()
@@ -135,6 +139,12 @@ public class UserInterface : MonoBehaviour
 
     void Update()
     {
+        if (_gameplayPause != null)
+        {
+            _gameplayPause.SyncIfRunInactive();
+            _gameplayPause.TryToggleRunPause();
+        }
+
         if (m_Player == null || _hud == null)
             return;
 
