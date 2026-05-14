@@ -3,7 +3,8 @@ using UnityEngine;
 
 public class GeoBlastProjectile : GeoBlast
 {
-    private float lifestealPerHit;
+    /// <summary>Pooled projectile must not run <see cref="GeoBlast.Update"/> (fire input, <see cref="GeoBlast.camPos"/>).</summary>
+    void Update() { }
 
     GeoBlast _ownerGeoBlast;
     PlayerCharacter _ownerPlayer;
@@ -46,17 +47,12 @@ public class GeoBlastProjectile : GeoBlast
         }
     }
 
-    void Update()
-    {
-        if (_ownerGeoBlast == null)
-            return;
-        lifestealPerHit = _ownerGeoBlast.getGeoBlastDmg() / 5;
-    }
-
     void OnCollisionEnter(Collision something)
     {
         if (_hit || _ownerGeoBlast == null || _ownerPlayer == null)
             return;
+
+        float lifestealPerHit = _ownerGeoBlast.getGeoBlastDmg() / 5f;
 
         if (something.gameObject.tag == "Enemy" && geoManiaActivated())
         {

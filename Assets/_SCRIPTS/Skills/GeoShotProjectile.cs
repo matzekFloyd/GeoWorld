@@ -3,9 +3,8 @@ using UnityEngine;
 
 public class GeoShotProjectile : GeoShot{
 
-    private float lifestealPerHit;
-    private float manaGainPerHit;
-    private float damagePerHit;
+    /// <summary>Pooled projectile must not run <see cref="GeoShot.Update"/> (fire input, <see cref="GeoShot.camPos"/>).</summary>
+    void Update() { }
 
     GeoShot _ownerGeoShot;
     PlayerCharacter _ownerPlayer;
@@ -52,18 +51,14 @@ public class GeoShotProjectile : GeoShot{
         GeoWorldObjectPools.Release(gameObject);
     }
 
-    void Update () {
-        if (_ownerGeoShot == null || _ownerPlayer == null)
-            return;
-        lifestealPerHit = _ownerGeoShot.getGeoShotDmg() / 10;
-        manaGainPerHit = _ownerGeoShot.manacost / 6;
-        damagePerHit = _ownerGeoShot.getGeoShotDmg();
-    }
-
     void OnCollisionEnter(Collision something)
     {
-        if (_hit || _ownerPlayer == null)
+        if (_hit || _ownerPlayer == null || _ownerGeoShot == null)
             return;
+
+        float damagePerHit = _ownerGeoShot.getGeoShotDmg();
+        float lifestealPerHit = damagePerHit / 10f;
+        float manaGainPerHit = _ownerGeoShot.manacost / 6f;
 
         if (something.gameObject.tag == "Enemy" && geoManiaActivated())
         {
@@ -71,8 +66,7 @@ public class GeoShotProjectile : GeoShot{
             if (ai != null)
             {
                 float d = damagePerHit;
-                bool crit = _ownerPlayer != null && _ownerGeoShot != null &&
-                    PlayerCritHelper.TryApplyGeoManiaCrit(_ownerPlayer, ref d, _ownerGeoShot.manacost, _ownerGeoShot.maxCooldown);
+                bool crit = PlayerCritHelper.TryApplyGeoManiaCrit(_ownerPlayer, ref d, _ownerGeoShot.manacost, _ownerGeoShot.maxCooldown);
                 ai.getDamaged(d, transform.position, CombatHitSeverity.Light, crit);
             }
             _hit = true;
@@ -93,8 +87,7 @@ public class GeoShotProjectile : GeoShot{
             if (ai != null)
             {
                 float d = damagePerHit;
-                bool crit = _ownerPlayer != null && _ownerGeoShot != null &&
-                    PlayerCritHelper.TryApplyGeoManiaCrit(_ownerPlayer, ref d, _ownerGeoShot.manacost, _ownerGeoShot.maxCooldown);
+                bool crit = PlayerCritHelper.TryApplyGeoManiaCrit(_ownerPlayer, ref d, _ownerGeoShot.manacost, _ownerGeoShot.maxCooldown);
                 ai.getDamaged(d, transform.position, CombatHitSeverity.Light, crit);
             }
             _hit = true;
