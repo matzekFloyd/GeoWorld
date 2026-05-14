@@ -41,7 +41,7 @@ public class GeoBlast : SkillBasic
 
     public void shoot()
     {
-        m_Player.curMana -= manacost;
+        m_Player.changeCurrentMana(-manacost);
         GameplaySfx.Instance?.PlayGeoBlastCast();
 
         var pools = GeoWorldObjectPools.Instance;

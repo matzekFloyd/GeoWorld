@@ -53,6 +53,7 @@ public class UserInterface : MonoBehaviour
     readonly string[] _skillHeal = new string[SkillCount];
     readonly string[] _skillCdMax = new string[SkillCount];
     readonly string[] _skillCdCur = new string[SkillCount];
+    readonly bool[] _skillInsufficientMana = new bool[SkillCount];
 
     Sprite _frameSprite;
 
@@ -160,6 +161,7 @@ public class UserInterface : MonoBehaviour
         playerExpNeededForLevelUp = m_Player.getExpNeededForLevelUp();
 
         BuildSkillStrings();
+        FillSkillInsufficientManaFlags();
 
         var session = GameSession.Instance;
         bool show = session != null && session.IsRunActive;
@@ -185,7 +187,58 @@ public class UserInterface : MonoBehaviour
             _skillDmg,
             _skillHeal,
             _skillCdMax,
-            _skillCdCur);
+            _skillCdCur,
+            _skillInsufficientMana);
+    }
+
+    void FillSkillInsufficientManaFlags()
+    {
+        for (int i = 0; i < SkillCount; i++)
+            _skillInsufficientMana[i] = false;
+
+        if (m_Player == null)
+            return;
+
+        int lv = Mathf.RoundToInt(curPlayerLevel);
+        float curM = m_Player.getCurMana();
+
+        for (int i = 0; i < SkillCount; i++)
+        {
+            if (lv < SkillMinLevels[i])
+                continue;
+
+            switch (i)
+            {
+                case 0:
+                    if (m_GeoShot != null)
+                        _skillInsufficientMana[i] = curM < m_GeoShot.manacost;
+                    break;
+                case 1:
+                    if (m_GeoBlast != null)
+                        _skillInsufficientMana[i] = curM < m_GeoBlast.manacost;
+                    break;
+                case 2:
+                    break;
+                case 3:
+                    if (m_HealSelf != null)
+                        _skillInsufficientMana[i] = curM < m_HealSelf.manacost;
+                    break;
+                case 4:
+                    if (m_Meteor != null)
+                        _skillInsufficientMana[i] = curM < m_Meteor.manacost;
+                    break;
+                case 5:
+                    if (m_BloodRitual != null)
+                        _skillInsufficientMana[i] = curM < m_BloodRitual.manacost;
+                    break;
+                case 6:
+                    if (m_FreezeTime != null)
+                        _skillInsufficientMana[i] = curM < m_FreezeTime.manacost;
+                    break;
+                case 7:
+                    break;
+            }
+        }
     }
 
     void BuildSkillStrings()

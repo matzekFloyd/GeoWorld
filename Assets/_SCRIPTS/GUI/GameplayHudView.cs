@@ -70,6 +70,8 @@ public sealed class GameplayHudView : MonoBehaviour
     float _lastHealthFill = -1f;
     float _lastManaFill = -1f;
     float _lastExpFill = -1f;
+    /// <summary>-1 unset, 0 normal HP bar tint, 1 overheal (darker red).</summary>
+    sbyte _lastHealthOverhealTint = -1;
     readonly string[] _lastSkillMana = new string[8];
     readonly string[] _lastSkillDmg = new string[8];
     readonly string[] _lastSkillHeal = new string[8];
@@ -82,6 +84,7 @@ public sealed class GameplayHudView : MonoBehaviour
         public Text KeyLabel;
         public Image Icon;
         public Image CdOverlay;
+        public Image LowManaOverlay;
         public Image Frame;
         public Text Mana;
         public Text Damage;
@@ -574,6 +577,9 @@ public sealed class GameplayHudView : MonoBehaviour
     /// <summary>1×1 white sprite for solid uGUI fills (minimap blips, etc.).</summary>
     public static Sprite HudSolidSprite => GetSolidWhiteSprite();
 
+    static readonly Color HealthFillDefault = new Color(0.85f, 0.2f, 0.2f);
+    static readonly Color HealthFillOverheal = new Color(0.48f, 0.09f, 0.09f);
+
     public void RefreshGameplay(
         bool showGameplay,
         int curLevel,
@@ -590,7 +596,8 @@ public sealed class GameplayHudView : MonoBehaviour
         string[] keyLabels,
         Sprite[] icons,
         Sprite frameSprite,
-        string[] mana, string[] dmg, string[] heal, string[] cdMax, string[] cdCur)
+        string[] mana, string[] dmg, string[] heal, string[] cdMax, string[] cdCur,
+        bool[] skillInsufficientMana)
     {
         if (_canvas == null || !_built)
             return;
@@ -599,6 +606,7 @@ public sealed class GameplayHudView : MonoBehaviour
         {
             SetHudVisible(false);
             _lastBloodTier = -1;
+            _lastHealthOverhealTint = -1;
             return;
         }
         SetHudVisible(true);
@@ -618,11 +626,21 @@ public sealed class GameplayHudView : MonoBehaviour
             _lastHealthTxt = hpTxt;
             _healthValueText.text = hpTxt;
         }
-        float hFill = maxHealth > 0 ? Mathf.Clamp01(curHealth / maxHealth) : 0f;
+        bool overheal = curHealth > maxHealth + 0.5f;
+        float hFill = overheal
+            ? 1f
+            : (maxHealth > 0f ? Mathf.Clamp01(curHealth / maxHealth) : 0f);
         if (Mathf.Abs(hFill - _lastHealthFill) > 0.0005f && _healthFill != null)
         {
             _lastHealthFill = hFill;
             _healthFill.fillAmount = hFill;
+        }
+
+        sbyte overhealTint = overheal ? (sbyte)1 : (sbyte)0;
+        if (overhealTint != _lastHealthOverhealTint && _healthFill != null)
+        {
+            _lastHealthOverhealTint = overhealTint;
+            _healthFill.color = overhealTint != 0 ? HealthFillOverheal : HealthFillDefault;
         }
 
         string mnTxt = (int)curMana + "/" + (int)maxMana;
@@ -695,7 +713,8 @@ public sealed class GameplayHudView : MonoBehaviour
             SetIfChanged(_columns[i].Damage, dmg[i], _lastSkillDmg, i);
             SetIfChanged(_columns[i].Heal, heal[i], _lastSkillHeal, i);
 
-            ApplySkillCooldownVisual(_columns[i], cdCur[i], cdMax[i]);
+            ApplySkillCooldownVisual(_columns[i], cdCur[i], cdMax[i],
+                skillInsufficientMana != null && i < skillInsufficientMana.Length && skillInsufficientMana[i]);
         }
     }
 
@@ -767,13 +786,18 @@ public sealed class GameplayHudView : MonoBehaviour
         _skillsRowRt.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, SkillsRowHeight);
     }
 
-    static void ApplySkillCooldownVisual(SkillColumn col, string cdCurStr, string cdMaxStr)
+    static readonly Color SkillLowManaOverlayColor = new Color(0.06f, 0.1f, 0.32f, 0.82f);
+
+    static void ApplySkillCooldownVisual(SkillColumn col, string cdCurStr, string cdMaxStr, bool insufficientMana)
     {
         if (col.Icon == null)
             return;
 
         bool hasCd = TryParseCooldown(cdCurStr, cdMaxStr, out float curCd, out float maxCd);
         bool onCd = hasCd && curCd > 0.02f;
+
+        if (col.LowManaOverlay != null)
+            col.LowManaOverlay.gameObject.SetActive(!onCd && insufficientMana);
 
         col.Icon.color = onCd ? new Color(0.7f, 0.72f, 0.76f, 1f) : Color.white;
 
@@ -1053,6 +1077,18 @@ public sealed class GameplayHudView : MonoBehaviour
             fr.sprite = GetOrCreateSprite(frameTex);
         fr.raycastTarget = false;
 
+        var lowManaGo = CreateUIObject("LowManaOverlay", iconHost.transform);
+        StretchFull(lowManaGo.GetComponent<RectTransform>());
+        var lowManaImg = lowManaGo.AddComponent<Image>();
+        lowManaImg.sprite = GetSolidWhiteSprite();
+        lowManaImg.color = SkillLowManaOverlayColor;
+        lowManaImg.raycastTarget = false;
+        var lowManaShadow = lowManaGo.AddComponent<Shadow>();
+        lowManaShadow.effectColor = new Color(0.02f, 0.04f, 0.14f, 0.65f);
+        lowManaShadow.effectDistance = new Vector2(2f, -2f);
+        lowManaShadow.useGraphicAlpha = true;
+        lowManaGo.SetActive(false);
+
         var cdGo = CreateUIObject("CooldownSweep", iconHost.transform);
         StretchFull(cdGo.GetComponent<RectTransform>());
         var cdImg = cdGo.AddComponent<Image>();
@@ -1077,6 +1113,7 @@ public sealed class GameplayHudView : MonoBehaviour
             KeyLabel = keyT,
             Icon = iconImg,
             CdOverlay = cdImg,
+            LowManaOverlay = lowManaImg,
             Frame = fr,
             Mana = Mana,
             Damage = Damage,

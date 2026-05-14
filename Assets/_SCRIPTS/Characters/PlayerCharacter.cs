@@ -3,6 +3,9 @@ using System.Collections;
 
 public class PlayerCharacter : BaseCharacter {
 
+    /// <summary>With Geo Mania (level 10), HP may exceed <see cref="maxHealth"/> up to this multiple (overheal).</summary>
+    public const float GeoManiaOverhealMaxMultiplier = 2f;
+
     private GameObject enemy;
 
     public float curMana;
@@ -32,6 +35,20 @@ public class PlayerCharacter : BaseCharacter {
     /// <summary>Time.time of last enemy/missile damage via <see cref="ApplyIncomingDamage"/>. Negative = never damaged this run.</summary>
     float _lastIncomingDamageTime = -1f;
 
+    [Header("Mana regen (idle ramp)")]
+    [Tooltip("Seconds without spending mana to reach maximum mana regen multiplier.")]
+    [SerializeField] float manaRegenRampIdleSeconds = 5f;
+
+    [Tooltip("Mana regen multiplier at full idle (1 = no bonus). Applied on top of base regen from level.")]
+    [SerializeField] float manaRegenMaxMultiplierAtFullIdle = 2.1f;
+
+    /// <summary>Time.time of last mana spend (negative cost via <see cref="changeCurrentMana"/>). Negative = no spend yet this run.</summary>
+    float _lastManaSpendTime = -1f;
+
+    [Header("Overheal decay (Geo Mania)")]
+    [Tooltip("HP removed per second only from HP above nominal max; stops when at or below maxHealth.")]
+    [SerializeField] float overhealDegenerationPerSecond = 4f;
+
 
 
 
@@ -60,6 +77,13 @@ public class PlayerCharacter : BaseCharacter {
             fx.NotifyPlayerDamaged(dealt, worldSource, hasWorldSource, severity, enemyCrit);
     }
 
+    protected override float GetHealthUpperClamp()
+    {
+        if (skillAvailable(10))
+            return maxHealth * GeoManiaOverhealMaxMultiplier;
+        return maxHealth;
+    }
+
     private void setInitialPlayerStatistics()
     {
         curExp = 0;
@@ -78,9 +102,12 @@ public class PlayerCharacter : BaseCharacter {
 	void Update () {
 
         changeCurrentHealth(0);
-        changeCurrentMana(calculateManaRegeneration(curLevel) * Time.deltaTime);
+        float manaRegenBase = calculateManaRegeneration(curLevel);
+        changeCurrentMana(manaRegenBase * GetManaRegenIdleMultiplier() * Time.deltaTime);
 
         regnerateHealth(GetPassiveHealthRegenPerSecond() * Time.deltaTime);
+
+        ApplyOverhealDecay();
 
         //FÜR TESTZWECKE
         if (GameInput.DebugInstantLevelUpUp && GameSession.Instance != null && GameSession.Instance.IsRunActive)
@@ -136,11 +163,30 @@ public class PlayerCharacter : BaseCharacter {
 
     public void regnerateHealth(float valueHealthRegenaration)
     {
-        changeCurrentHealth(valueHealthRegenaration);
+        if (valueHealthRegenaration <= 0f)
+            return;
+        float room = maxHealth - curHealth;
+        if (room <= 0f)
+            return;
+        changeCurrentHealth(Mathf.Min(valueHealthRegenaration, room));
+    }
+
+    void ApplyOverhealDecay()
+    {
+        if (overhealDegenerationPerSecond <= 0f || !skillAvailable(10))
+            return;
+        float overhead = curHealth - maxHealth;
+        if (overhead <= 0.0001f)
+            return;
+        float remove = overhealDegenerationPerSecond * Time.deltaTime;
+        changeCurrentHealth(-Mathf.Min(overhead, remove));
     }
 
     public void changeCurrentMana(float change)
     {
+        if (change < 0f)
+            _lastManaSpendTime = Time.time;
+
         curMana += change;
 
         if (curMana < 0)
@@ -164,6 +210,21 @@ public class PlayerCharacter : BaseCharacter {
     {
         // Stronger per-level growth than the post-nerf linear-only curve; mild L² so high levels keep pace with skill costs.
         return 0.5f + curLevel * 0.7f + curLevel * curLevel * 0.005f;
+    }
+
+    /// <summary>Multiplier applied to base mana regen; rises the longer the player has not spent mana (see <see cref="changeCurrentMana"/> negative deltas).</summary>
+    public float GetManaRegenIdleMultiplier()
+    {
+        float maxM = Mathf.Max(1f, manaRegenMaxMultiplierAtFullIdle);
+        if (manaRegenRampIdleSeconds <= 0.001f)
+            return maxM;
+
+        float sinceSpend = _lastManaSpendTime < 0f
+            ? manaRegenRampIdleSeconds
+            : Time.time - _lastManaSpendTime;
+        float u = Mathf.Clamp01(sinceSpend / manaRegenRampIdleSeconds);
+        u = u * u * (3f - 2f * u);
+        return Mathf.Lerp(1f, maxM, u);
     }
 
     /// <summary>Passive HP/s from staying safe (0 during post-hit lockout, then ramps up).</summary>

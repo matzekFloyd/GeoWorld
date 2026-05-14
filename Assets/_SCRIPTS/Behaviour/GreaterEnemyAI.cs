@@ -336,7 +336,9 @@ public class GreaterEnemyAI : MonoBehaviour {
         enemyGenerator.GetComponent<EnemyGenerator>().targets.Remove(this.transform);
 
         float gainedExp = ec.expOnKill;
-        target.GetComponent<PlayerCharacter>().AddExp(gainedExp + (boss ? GameBalanceHelper.BossBonusXpFlat : 0f));
+        var pc = target.GetComponent<PlayerCharacter>();
+        pc.AddExp(gainedExp + (boss ? GameBalanceHelper.BossBonusXpFlat : 0f));
+        GameBalanceHelper.ApplyKillSustain(pc, boss, ec != null && ec.iAmGreaterEnemy && !boss);
 
         GameOver go = target.GetComponent<GameOver>();
         ++go.enemyKillCounter;

@@ -49,7 +49,7 @@ public class HealSelf : SkillBasic {
 
     public void heal()
     {
-            m_Player.curMana -= manacost;
+            m_Player.changeCurrentMana(-manacost);
 
             GameplaySfx.Instance?.PlayHealCast(healSound);
             m_Player.changeCurrentHealth(healingAmount);

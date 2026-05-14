@@ -45,7 +45,7 @@ public class GeoShot : SkillBasic
 
     public void shoot()
     {
-        m_Player.curMana -= manacost;
+        m_Player.changeCurrentMana(-manacost);
         GameplaySfx.Instance?.PlayGeoShotCast();
 
         var pools = GeoWorldObjectPools.Instance;
@@ -59,7 +59,7 @@ public class GeoShot : SkillBasic
     public void geoManiaShoot()
     {
         int randomValue = Random.Range(1, 5);
-        m_Player.curMana -= manacost;
+        m_Player.changeCurrentMana(-manacost);
 
         var pools = GeoWorldObjectPools.Instance;
         for(int i = 0; i <= randomValue; i++)
