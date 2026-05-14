@@ -22,21 +22,33 @@ public class GameBalance : ScriptableObject
     [Tooltip("For player level 3 and up: desired count ≈ level × this (see EnemyGenerator).")]
     public int enemiesPerPlayerLevel = 22;
 
-    [Tooltip("Player level at which greater enemies / boss logic can activate.")]
+    [Tooltip("Player level at which greater enemies and boss spawn logic can activate (see EnemyGenerator).")]
     public int greaterEnemiesMinPlayerLevel = 10;
 
-    [Tooltip("Boss spawn attempt when player level is a multiple of this (e.g. 5 → levels 10,15,20… with current generator logic).")]
+    [Tooltip(
+        "Boss spawn cadence: a boss is scheduled when player level ≥ greaterEnemiesMinPlayerLevel AND level is a multiple of this value. " +
+        "Example: 5 with min level 10 → bosses at levels 10, 15, 20, … Only one living boss is allowed; see EnemyGenerator.")]
     public int bossSpawnLevelMultiple = 5;
 
-    [Header("Boss (EnemyCharacter.isBoss)")]
+    [Header("Boss encounter (EnemyCharacter.isBoss)")]
+    [Tooltip("Seconds (real time, unscaled) before the boss entity spawns after the UI telegraph begins.")]
+    public float bossTelegraphDurationSeconds = 2.2f;
+
+    [Tooltip("Peak alpha for the full-screen tint during the boss-incoming telegraph.")]
+    [Range(0f, 0.45f)]
+    public float bossTelegraphTintAlpha = 0.14f;
+
     [Tooltip("Multiplies max health after normal/greater stats are computed.")]
     public float bossHealthMultiplier = 3f;
 
-    [Tooltip("Multiplies EXP reward after base expOnKill is computed.")]
+    [Tooltip("Multiplies EXP reward after base expOnKill is computed (applied in EnemyCharacter).")]
     public float bossExpMultiplier = 2f;
 
-    [Tooltip("Added to the Greater Enemies kill counter when a boss dies (scoreboard feel).")]
-    public int bossGreaterKillCounterBonus = 3;
+    [Tooltip("Extra XP added when a boss dies (in addition to expOnKill after multipliers).")]
+    public float bossBonusXpFlat = 250f;
+
+    [Tooltip("Bonus score accumulated when a boss is defeated (shown on end screen; separate from kill counts).")]
+    public int bossScoreBonusOnKill = 500;
 }
 
 /// <summary>
@@ -88,11 +100,19 @@ public static class GameBalanceHelper
 
     public static int GreaterEnemiesMinPlayerLevel => Active != null ? Active.greaterEnemiesMinPlayerLevel : 10;
 
-    public static int BossSpawnLevelMultiple => Active != null ? Active.bossSpawnLevelMultiple : 5;
+    public static int BossSpawnLevelMultiple => Active != null ? Mathf.Max(1, Active.bossSpawnLevelMultiple) : 5;
+
+    public static float BossTelegraphDurationSeconds =>
+        Active != null && Active.bossTelegraphDurationSeconds > 0.05f ? Active.bossTelegraphDurationSeconds : 2.2f;
+
+    public static float BossTelegraphTintAlpha =>
+        Active != null ? Mathf.Clamp01(Active.bossTelegraphTintAlpha) : 0.14f;
 
     public static float BossHealthMultiplier => Active != null ? Active.bossHealthMultiplier : 3f;
 
     public static float BossExpMultiplier => Active != null ? Active.bossExpMultiplier : 2f;
 
-    public static int BossGreaterKillCounterBonus => Active != null ? Active.bossGreaterKillCounterBonus : 3;
+    public static float BossBonusXpFlat => Active != null ? Active.bossBonusXpFlat : 250f;
+
+    public static int BossScoreBonusOnKill => Active != null ? Active.bossScoreBonusOnKill : 500;
 }

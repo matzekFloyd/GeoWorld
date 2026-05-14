@@ -38,6 +38,7 @@ public sealed class GameplaySfx : MonoBehaviour
         EnemyMeleeAttack,
         EnemyRangedAttack,
         EnemyDie,
+        BossIncoming,
         Count
     }
 
@@ -56,6 +57,7 @@ public sealed class GameplaySfx : MonoBehaviour
     [SerializeField] AudioClip _enemyRangedAttack;
     [SerializeField] AudioClip _enemyDieNormal;
     [SerializeField] AudioClip _enemyDieBoss;
+    [SerializeField] AudioClip _bossIncomingStinger;
 
     [Header("Levels")]
     [SerializeField, Range(0f, 1f)] float _skillVolume = 0.88f;
@@ -160,7 +162,8 @@ public sealed class GameplaySfx : MonoBehaviour
     {
         return _geoShotCast != null || _geoBlastCast != null || _meteorCast != null || _healCast != null ||
                _bloodRitualCast != null || _freezeTimeCast != null || _enemySpawnNormal != null || _enemySpawnElite != null ||
-               _enemyMeleeAttack != null || _enemyRangedAttack != null || _enemyDieNormal != null || _enemyDieBoss != null;
+               _enemyMeleeAttack != null || _enemyRangedAttack != null || _enemyDieNormal != null || _enemyDieBoss != null ||
+               _bossIncomingStinger != null;
     }
 
     /// <summary>Per-skill clip (e.g. HealSelf.healSound) or fallback to library default when <paramref name="clip"/> is null.</summary>
@@ -186,6 +189,8 @@ public sealed class GameplaySfx : MonoBehaviour
         var clip = isBoss && _enemyDieBoss != null ? _enemyDieBoss : _enemyDieNormal;
         TryPlay(clip, Channel.EnemyDie, _enemyVolume, 0.08f, isBoss);
     }
+
+    public void PlayBossIncoming() => TryPlay(_bossIncomingStinger, Channel.BossIncoming, _enemyVolume, 0.2f, false);
 
     void TryPlay(AudioClip clip, Channel channel, float volume, float minIntervalUnscaled, bool bossPitchJitter)
     {

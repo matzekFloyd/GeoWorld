@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.InputSystem.UI;
 
 public class EventSystemChecker : MonoBehaviour
 {
@@ -13,7 +14,7 @@ public class EventSystemChecker : MonoBehaviour
            //Instantiate(eventSystem);
             GameObject obj = new GameObject("EventSystem");
             obj.AddComponent<EventSystem>();
-            obj.AddComponent<StandaloneInputModule>();
+            obj.AddComponent<InputSystemUIInputModule>();
         }
 	}
 }

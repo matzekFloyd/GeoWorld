@@ -371,12 +371,16 @@ public class EnemyAI : MonoBehaviour {
             return;
         }
         float gainedExp = ec.getExpOnKill();
-        target.GetComponent<PlayerCharacter>().AddExp(gainedExp);
+        var pc = target.GetComponent<PlayerCharacter>();
+        pc.AddExp(gainedExp + (ec.isBoss ? GameBalanceHelper.BossBonusXpFlat : 0f));
 
         GameOver go = target.GetComponent<GameOver>();
         ++go.enemyKillCounter;
-        if (ec != null && ec.isBoss)
-            go.greaterEnemyKillCounter += 1 + GameBalanceHelper.BossGreaterKillCounterBonus;
+        if (ec.isBoss)
+        {
+            ++go.bossKillCounter;
+            go.bossBonusScoreTotal += GameBalanceHelper.BossScoreBonusOnKill;
+        }
 
         var pooled = GetComponent<PooledObject>();
         if (pooled != null && pooled.IsManaged)

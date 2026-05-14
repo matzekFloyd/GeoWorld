@@ -11,6 +11,9 @@ public class EnemyCharacter : BaseCharacter {
     [Tooltip("Enable on boss prefabs for extra health/EXP and scoreboard bonus on death.")]
     public bool isBoss;
 
+    /// <summary>Stable scale for <see cref="CombatFeedback"/> hit punch (avoids compounding when coroutines overlap).</summary>
+    public Vector3 HitPunchRestLocalScale { get; private set; }
+
     Color _paletteFromSharedMaterial;
 
     void Awake()
@@ -18,6 +21,8 @@ public class EnemyCharacter : BaseCharacter {
         var r = GetComponent<Renderer>();
         if (r != null && r.sharedMaterial != null)
             _paletteFromSharedMaterial = r.sharedMaterial.color;
+
+        HitPunchRestLocalScale = transform.localScale;
     }
 
     void OnEnable()
@@ -33,6 +38,8 @@ public class EnemyCharacter : BaseCharacter {
         }
 
         setEnemyStatistics(player.GetComponent<PlayerCharacter>().getCurLevel(), player.GetComponent<PlayerCharacter>().getExpNeededForLevelUp());
+
+        HitPunchRestLocalScale = transform.localScale;
     }
 
     // Update is called once per frame

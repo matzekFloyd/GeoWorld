@@ -7,8 +7,8 @@ Unity **6** project (**6000.4.5f1**). A third-person style **survival / horde** 
 ## What the game is
 
 - **Core loop**: Stay alive, kill waves of enemies, level up (up to **50** in current player logic), and survive until the round timer expires—or lose if health hits zero.
-- **Round rules** (`GameOver`): countdown duration, spawn density, greater/boss thresholds, and boss multipliers come from **`GameBalance`** (ScriptableObject) when assigned; **defaults** match the old design (**900** s round, **`level × 40`** target enemies, greater from level **10+**, boss attempts when level is a multiple of **5**). Kill counters cover normal and **greater** enemies; game over on death or time up.
-- **Fantasy hook**: Earth / “geo” themed skills (projectiles, blast, meteor, time freeze, blood ritual, heal, etc.) against spawned enemies including stronger variants and periodic **boss** spawns tied to level milestones (`EnemyGenerator`).
+- **Round rules** (`GameOver`): countdown duration, spawn density, greater/boss thresholds, and boss multipliers come from **`GameBalance`** (ScriptableObject) when assigned; **defaults** match the old design (**900** s round, **`level × 22`** target living enemies from level 3+, greater from level **10+**, boss cadence when level is a multiple of **5** at or above that gate). Kill UI: **enemies** (all kills), **greater** (non-boss greater only), **bosses defeated** plus optional **boss bonus score**; game over on death or time up.
+- **Fantasy hook**: Earth / “geo” themed skills (projectiles, blast, meteor, time freeze, blood ritual, heal, etc.) against spawned enemies including stronger variants and periodic **boss** spawns tied to level milestones (`EnemyGenerator`), with a telegraphed **boss incoming** moment (HUD banner + tint + optional SFX) before the boss entity appears.
 
 Main scenes (under `Assets/_SCENES/`):
 
@@ -20,10 +20,10 @@ Main scenes (under `Assets/_SCENES/`):
 | Area | Role |
 |------|------|
 | **`PlayerCharacter`** | Level, XP curve, mana, health regen, leveling scales enemy stats via **`EnemyGenerator`**. Warns if the **`Spawn`** tag is missing (generator dependency). |
-| **`EnemyGenerator`** | State machine (`Initialize` → `Setup` → `SpawnEnemy`): target living count and thresholds read **`GameBalanceHelper`** (from the active **`GameBalance`** asset or defaults). Boss instances from **`spawnEndBoss`** get **`EnemyCharacter.isBoss`** set at spawn. |
+| **`EnemyGenerator`** | State machine (`Initialize` → `Setup` → `SpawnEnemy`): target living count from **`GameBalanceHelper`**. **Boss:** when player level ≥ `greaterEnemiesMinPlayerLevel` and level % `bossSpawnLevelMultiple` == 0, starts a **telegraph** (real-time, from `bossTelegraphDurationSeconds`) then spawns if no boss is already alive; sets **`EnemyCharacter.isBoss`**. Spawn position: **`endBossSpawnPoint`** if set, else a random non-null **`greaterEnemySpawnPoints`** entry. **`spawnEndBoss()`** still exists for immediate spawns (no telegraph). |
 | **`SkillBasic` + skills** | Shared mana/cooldown helpers; cache **`PlayerCharacter`** / **`GameOver`** where refactored; input keys go through **`GameInput`**; skills respect **`GameOver`** when dead or time over. |
 | **`UserInterface`** | Drives the gameplay **uGUI** HUD: bars, skill columns, crosshair, and low-health vignette. Reads player/skills in **`Update`** and pushes strings/fill amounts into **`GameplayHudView`** with dirty checks (no **`OnGUI`** on the hot path). |
-| **`GameplayHudView`** | **`UnityEngine.UI`** Canvas built at runtime as a child **`GameplayHUD`** (see **Gameplay HUD** below). Hosts fullscreen skill flashes (heal / blood ritual / freeze) and caches **`Sprite`** instances per texture. |
+| **`GameplayHudView`** | **`UnityEngine.UI`** Canvas built at runtime as a child **`GameplayHUD`** (see **Gameplay HUD** below). Hosts fullscreen skill flashes (heal / blood ritual / freeze), **boss incoming** telegraph overlay, and caches **`Sprite`** instances per texture. |
 | **`GameOver`** | Timer from balance, kill UI (**Unity UI `Text`**, null-safe), end screens. End-of-round copy updates in **`Update`** (no **`OnGUI`**). **Escape** uses **`GameInput`**. **WebGL**: no **`Application.Quit`**; copy prompts the player to close the tab. Standalone/editor use quit or exit play mode as appropriate. |
 | **`BackgroundMusic`** | **`AudioSource`** loop; optional **`alternateTracks`** + random pick (pool includes **`backGroundMusic`** when set), **`playbackVolume`**. Subclasses **`GameOver`** only to stop on game-over flags (legacy layout). |
 
@@ -39,16 +39,23 @@ Enemy behaviour lives under `Assets/_SCRIPTS/Behaviour/` (`EnemyAI`, `GreaterEne
 
 | Asset / script | Purpose |
 |----------------|---------|
-| **`GameBalance`** (`Assets → Create → GeoWorld → Game Balance`) | Round length, `enemiesPerPlayerLevel`, greater/boss level rules, boss HP/XP multipliers and score bonus. Assign the asset on the **`GameOver`** component’s **`gameBalance`** field; if empty, **`GameBalanceHelper`** keeps the historical defaults. |
+| **`GameBalance`** (`Assets → Create → GeoWorld → Game Balance`) | Round length, per-level spawn targets, greater/boss **gates** and **cadence**, boss **telegraph** (duration + screen tint alpha), boss HP/XP multipliers, **flat bonus XP** and **score per boss kill** (`bossBonusXpFlat`, `bossScoreBonusOnKill`). Assign on **`GameOver`**; if empty, **`GameBalanceHelper`** uses built-in defaults. |
 | **`GameInput`** (`Assets/_SCRIPTS/Config/GameInput.cs`) | Façade over the **Input System**: loads JSON from **`Assets/Resources/Input/GeoWorldInputActions.txt`** via **`InputActionAsset.LoadFromJson`**. Exposes the same static API as before (`FirePrimaryDown`, skill `*Up`, `PauseOrQuitUp`, etc.). |
+
+### Boss encounters (tuning & behaviour)
+
+- **Cadence** (`EnemyGenerator` + `GameBalance`): a boss is **scheduled** when player level ≥ **`greaterEnemiesMinPlayerLevel`** and **`level % bossSpawnLevelMultiple == 0`** (defaults: first boss at level **10**, then **15**, **20**, …). Only **one living boss** is allowed in `targets` at a time to avoid spam.
+- **Telegraph**: before the prefab spawns, **`GameplayHudView.PlayBossIncomingTelegraph`** shows a banner + purple screen tint for **`bossTelegraphDurationSeconds`** (real time, unscaled). **`GameplaySfx.PlayBossIncoming`** plays optional clip **`bossIncomingStinger`** on the **`GameplaySfx`** component (same object as **`UserInterface`**).
+- **Counters & score** (`GameOver`): **`bossKillCounter`** counts boss defeats separately from **`greaterEnemyKillCounter`** (greater-only, no boss). **`bossBonusScoreTotal`** accumulates **`bossScoreBonusOnKill`** per boss. **`enemyKillCounter`** still increments for every enemy death including bosses.
+- **XP**: `EnemyCharacter` applies **`bossExpMultiplier`** to `expOnKill`; death handlers add **`bossBonusXpFlat`** when `isBoss`.
 
 ### Changing default bindings (keyboard / mouse)
 
 1. Edit **`Assets/Resources/Input/GeoWorldInputActions.txt`**. It is standard **Input Actions** JSON (same format as a `.inputactions` file). Adjust paths under the **Gameplay** map’s **`bindings`** (e.g. **FirePrimary** → `<Mouse>/leftButton`, skills **Q/E/R/F**, **PauseOrQuit** → `<Keyboard>/escape`, **DebugLevelUp** → **T**).
 2. Save the file. **`GameInput`** loads **`Resources`** path **`Input/GeoWorldInputActions`** at runtime; no code changes for rebinding.
 3. Optional: copy the JSON to a **`.inputactions`** file elsewhere in the project if you want Unity’s **Input Actions** visual editor, then paste changes back into **`GeoWorldInputActions.txt`** when done.
-4. **Player settings**: Gameplay uses the **new Input System**; **Standard Assets** still use the **legacy** manager. The repo includes an Editor script that sets **Project Settings → Player → Active Input Handling** to **Both** so both stacks work. If you reset project settings, set **Both** again (or **Input System Package + Old**). **`GameInput`** also falls back to **`UnityEngine.Input`** when **`ENABLE_LEGACY_INPUT_MANAGER`** is defined, so skills and mouse still work if the new backend is not active (e.g. project stuck on **Input Manager (Old)** only).
-5. **WebGL player builds**: **`GameInput`** uses **legacy `Input` only** (no `InputAction` reads) to avoid a **maximum call stack** / WASM–JS re-entrancy issue when mixing the two backends in the browser. Rebinding via **`GeoWorldInputActions.txt`** applies to **non-WebGL** targets; WebGL uses the default **Fire1** / **Q,E,R,F** / mouse buttons from the **Input Manager** (`ProjectSettings/InputManager.asset`).
+4. **Player settings**: Set **Edit → Project Settings → Player → Other Settings → Active Input Handling** to **Input System Package (New)** (or **Both** only if you still need the old manager elsewhere). Standard Assets paths use **`GeoWorldInputCompat`** (`Assets/Plugins/GeoWorldInputCompat.cs`) so keyboard/mouse reads work without the legacy **Input Manager** backend.
+5. **WebGL**: **`GameInput`** uses the same **Input Actions** JSON as other platforms. If you hit input or audio quirks in the browser, test with **Both** temporarily and check the Unity issue tracker for your Editor version.
 
 ## Repository layout
 

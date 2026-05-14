@@ -1,14 +1,12 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
-#if !(UNITY_WEBGL && !UNITY_EDITOR && ENABLE_LEGACY_INPUT_MANAGER)
 using UnityEngine.InputSystem;
-#endif
 
 /// <summary>
 /// Lightweight bottom-left radar: world XZ projected onto uGUI (no extra RenderTexture or scene camera).
 /// Uses <see cref="EnemyGenerator.targets"/> as the hostile list; bounds from <see cref="EnemyGenerator.TryGetArenaBoundsXZ"/>.
-/// Throttled updates for WebGL; optional visibility/opacity via PlayerPrefs; <b>M</b> toggles minimap when input is available.
+/// Throttled updates for WebGL; optional visibility/opacity via PlayerPrefs; <b>M</b> toggles minimap.
 /// </summary>
 [DisallowMultipleComponent]
 public sealed class MinimapRadar : MonoBehaviour
@@ -328,17 +326,7 @@ public sealed class MinimapRadar : MonoBehaviour
 
     static bool WasMinimapTogglePressed()
     {
-#if UNITY_WEBGL && !UNITY_EDITOR && ENABLE_LEGACY_INPUT_MANAGER
-        return UnityEngine.Input.GetKeyDown(KeyCode.M);
-#else
-        if (Keyboard.current != null && Keyboard.current.mKey.wasPressedThisFrame)
-            return true;
-#if ENABLE_LEGACY_INPUT_MANAGER
-        return UnityEngine.Input.GetKeyDown(KeyCode.M);
-#else
-        return false;
-#endif
-#endif
+        return Keyboard.current != null && Keyboard.current.mKey.wasPressedThisFrame;
     }
 
     static GameObject CreateChild(RectTransform parent, string name)
