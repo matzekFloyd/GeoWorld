@@ -12,7 +12,7 @@ Unity **6** project (**6000.4.5f1**). A third-person style **survival / horde** 
 
 Main scenes (under `Assets/_SCENES/`):
 
-- **`Start.unity`** — Title screen (**GeoWorld** / “Press any key to start”); `GameStart` loads **`GeoWorldMain`** on the first key or mouse button (see `Assets/_SCENES/GameStart.cs`). **Editor:** Unity’s Play button normally runs the **scene you have open**; this repo sets **`Start.unity`** as the default **Play Mode Start Scene** on domain reload (`Assets/Editor/GeoWorldPlayModeStartScene.cs`) so you still see the title flow while working on other scenes. To change that: **GeoWorld → Play Mode → Use currently open scene when pressing Play** (or **Project Settings → Editor → Play Mode** and assign another scene).
+- **`Start.unity`** — Title screen (**GeoWorld** / “Press any key or click to start”); `GameStart` loads **`GeoWorldMain`** on the first key or mouse button (see `Assets/_SCENES/GameStart.cs`). **Editor:** Unity’s Play button normally runs the **scene you have open**; this repo sets **`Start.unity`** as the default **Play Mode Start Scene** on domain reload (`Assets/Editor/GeoWorldPlayModeStartScene.cs`) so you still see the title flow while working on other scenes. To change that: **GeoWorld → Play Mode → Use currently open scene when pressing Play** (or **Project Settings → Editor → Play Mode** and assign another scene).
 - **`GeoWorldMain.unity`** — Primary gameplay scene.
 
 ## Gameplay systems (high level)
@@ -25,16 +25,20 @@ Main scenes (under `Assets/_SCENES/`):
 | **`UserInterface`** | Drives the gameplay **uGUI** HUD: bars, skill columns, crosshair, and low-health vignette. Reads player/skills in **`Update`** and pushes strings/fill amounts into **`GameplayHudView`** with dirty checks (no **`OnGUI`** on the hot path). Uses **`GameSession`** for whether the HUD/minimap should show during an active run. |
 | **`GameplayHudView`** | **`UnityEngine.UI`** Canvas built at runtime as a child **`GameplayHUD`** (see **Gameplay HUD** below). Hosts fullscreen skill flashes (heal / blood ritual / freeze), **boss incoming** telegraph overlay, and caches **`Sprite`** instances per texture. |
 | **`GameSession`** | Small façade: **`IsRunActive`**, **`Player`**. Created on the **`Player1`** object when **`GameOver.Start`** runs (and **`UserInterface.Start`** calls **`EnsureForScene`** early so HUD order is safe). **`GameOver`** calls **`SyncRunState`** each frame after updating death/time flags. |
-| **`GameOver`** | Timer from balance, kill UI (**Unity UI `Text`**, null-safe), end screens. End-of-round copy updates in **`Update`** (no **`OnGUI`**). **Escape** uses **`GameInput`**. **WebGL**: no **`Application.Quit`**; copy prompts the player to close the tab. Standalone/editor use quit or exit play mode as appropriate. |
+| **`GameOver`** | Timer from balance, kill counters, and end-screen lines use **`UnityEngine.UI`** **`Text`** (null-safe). End-of-round strings refresh from **`Update`** when the outcome or kill counters change (not every frame once stable). **Enter** reloads **`GeoWorldMain`** (play again); **B** loads the title scene (**`Start`** by default); **Escape** still exits play mode (Editor), quits (standalone), or is documented for WebGL tab close. **No runtime `OnGUI`** here. |
 | **`BackgroundMusic`** | Same GameObject as **`AudioSource`**: inspector **`backGroundMusic`**, **`alternateTracks`**, **`playbackVolume`**; random track rules in **Background music** under **Tuning & configuration**. Stops when **`GameSession`** reports the run has ended (treats a missing session as “still playing” until **`GameOver`** has started). |
 
 Enemy behaviour lives under `Assets/_SCRIPTS/Behaviour/` (`EnemyAI`, `GreaterEnemyAI`, `HomingMissileAI`, etc.).
 
 ### Gameplay HUD (uGUI)
 
+**Stack:** Gameplay-facing UI is built with **`UnityEngine.UI` (uGUI)** — not immediate-mode **`OnGUI`**. **`UserInterface`** + **`GameplayHudView`** own the HUD; **`MinimapRadar`** draws the bottom-left radar on the same Canvas stack; **`GameplayPause`** adds a pause overlay to that Canvas. **`GameOver`** uses scene-assigned **`Text`** components for the top-right round timer / kill counters during play and for the end-game scoreboard lines.
+
 - **Where it lives:** The same GameObject that has **`UserInterface`** and **`GameOver`** — often on the **player** in **`GeoWorldMain`**. At runtime, **`UserInterface`** ensures a **`GameplayHudView`** component on that object and creates a child **`GameplayHUD`** with a **Screen Space Overlay** Canvas, **`CanvasScaler`** (reference **2020×1136**, ~**95%** UI scale on 1080p vs. a 1920×1080 reference), bars, an 8-column skill strip, crosshair, low-health vignette, and fullscreen FX **`Image`**s.
-- **Scripts:** `Assets/_SCRIPTS/GUI/GameplayHudView.cs` (layout + widgets), `Assets/_SCRIPTS/GUI/UserInterface.cs` (data + dirty refresh). **`HealSelf`**, **`BloodRitual`**, and **`FreezeTime`** push fullscreen overlays through **`GameplayHudView.Instance`** in **`LateUpdate`** (no **`OnGUI`**).
-- **Customization:** Open **`GeoWorldMain`** in the Editor, select the object with **`UserInterface`**, expand **`GameplayHUD`** after entering Play once (or duplicate that subtree into `Assets/_PREFABS/` if you want a prefab-driven layout). Re-assign **`UserInterface`**’s **`Texture2D`** fields as before for bar/skill art.
+- **Scripts:** `Assets/_SCRIPTS/GUI/GameplayHudView.cs` (layout + widgets), `Assets/_SCRIPTS/GUI/UserInterface.cs` (data + dirty refresh into the view). **`HealSelf`**, **`BloodRitual`**, and **`FreezeTime`** push fullscreen overlays through **`GameplayHudView.Instance`** in **`LateUpdate`**.
+- **Title screen (`Start.unity`):** `GameStart` builds its own **Screen Space Overlay** Canvas in code (`Assets/_SCENES/GameStart.cs`) — also uGUI, not **`OnGUI`**.
+- **Customization (art):** Open **`GeoWorldMain`**, select the object with **`UserInterface`**, and assign the **`Texture2D`** fields in the Inspector (health/mana/exp bars, skill icons, crosshair, frame, blood vignette textures, etc.). No code change needed for simple reskins.
+- **Customization (layout / hierarchy):** The **`GameplayHUD`** subtree is created at runtime by **`GameplayHudView.EnsureBuilt`**. To adjust layout or add widgets, enter **Play** once, copy the generated **`GameplayHUD`** hierarchy (or maintain a prefab under **`Assets/_PREFABS/`** and wire it). If you replace the default hierarchy in the scene, assign a **`GameplayHudView`** reference on **`UserInterface`** so **`EnsureBuilt`** does not overwrite your edits (see class summary on **`UserInterface`**).
 
 ## Tuning & configuration
 
@@ -93,7 +97,7 @@ Script: **`Assets/_SCRIPTS/BackgroundMusic.cs`**. Put **`BackgroundMusic`** on t
 
 ### Changing default bindings (keyboard / mouse)
 
-1. Edit **`Assets/Resources/Input/GeoWorldInputActions.txt`**. It is standard **Input Actions** JSON (same format as a `.inputactions` file). Adjust paths under the **Gameplay** map’s **`bindings`** (e.g. **FirePrimary** → `<Mouse>/leftButton`, skills **Q/E/R/F**, **PauseOrQuit** → `<Keyboard>/escape`, **DebugLevelUp** → **T**).
+1. Edit **`Assets/Resources/Input/GeoWorldInputActions.txt`**. It is standard **Input Actions** JSON (same format as a `.inputactions` file). Adjust paths under the **Gameplay** map’s **`bindings`** (e.g. **FirePrimary** → `<Mouse>/leftButton`, skills **Q/E/R/F**, **PauseOrQuit** → `<Keyboard>/escape`, **DebugLevelUp** → **T**, **PostRoundReplay** → `<Keyboard>/enter`, **PostRoundTitle** → `<Keyboard>/b`).
 2. Save the file. **`GameInput`** loads **`Resources`** path **`Input/GeoWorldInputActions`** at runtime; no code changes for rebinding.
 3. Optional: copy the JSON to a **`.inputactions`** file elsewhere in the project if you want Unity’s **Input Actions** visual editor, then paste changes back into **`GeoWorldInputActions.txt`** when done.
 4. **Player settings**: Set **Edit → Project Settings → Player → Other Settings → Active Input Handling** to **Input System Package (New)** (or **Both** only if you still need the old manager elsewhere). Standard Assets paths use **`GeoWorldInputCompat`** (`Assets/Plugins/GeoWorldInputCompat.cs`) so keyboard/mouse reads work without the legacy **Input Manager** backend.
@@ -124,9 +128,8 @@ These reflect how the game was built historically—not necessarily current Unit
 2. **Discovery by tag and `GetComponent`**  
    Many systems still resolve the player by tag **`Player1`**; gameplay/UI paths that were hot refactored cache **`PlayerCharacter`** instead of calling **`GetComponent`** every frame. **`GameSession`** exposes **`IsRunActive`** and the active **`PlayerCharacter`** so audio/skills/HUD do not query **`GameOver`** for death/timer flags.
 
-3. **Dual UI stack**  
-   - HUD and overlays: **`OnGUI`** (`UserInterface`, parts of `GameOver`).  
-   - Some screens/widgets: **`UnityEngine.UI`** (`Text` on `GameOver`).
+3. **UI stack (gameplay)**  
+   **HUD, minimap, mid-round pause overlay, and end-of-run scoreboard** use **`UnityEngine.UI` (uGUI)** — `GameplayHudView`, `UserInterface`, `MinimapRadar`, `GameplayPause`, and `GameOver`’s **`Text`** references. **Immediate-mode `OnGUI`** is **not** used on those paths. (Some **Standard Assets** packages still contain **Editor-only** `OnGUI` in custom **PropertyDrawer**s; that is unrelated to in-game HUD rendering.)
 
 4. **Inheritance for skills**  
    `SkillBasic` base class (mana, cooldown, reference to player); concrete skills (`GeoShot`, `Meteor`, …) override behaviour in `Update` and input.
@@ -154,9 +157,9 @@ This section is the checklist for a **browser** build: loading, audio policy, fu
 
 | Topic | What we do |
 |--------|----------------|
-| **Tab focus / visibility** | `WebGlShipReadyRuntime` (WebGL player only) sets `AudioListener.pause` from `OnApplicationPause` when the tab loses or regains focus. Gameplay **time scale is unchanged** (avoids fighting `GameOver`, which sets `Time.timeScale` to 0 at end of round). To also pause simulation when hidden, you would add a small component that toggles `Time.timeScale` only while the round is active—**not** done by default. |
+| **Tab focus / visibility** | `WebGlShipReadyRuntime` (WebGL **player** builds only) sets `AudioListener.pause` from `OnApplicationPause` / `OnApplicationFocus` when the tab loses or regains focus. While **`GameSession.IsRunActive`** is true, it also sets **`Time.timeScale` to 0** until the tab is focused again, then restores the previous time scale (so the round timer and simulation do not run in the background). It does **not** change time scale when no run is active (title / game-over), so **`GameOver`** can keep `Time.timeScale` at 0 at end of round without this fighting it. |
 | **Background music & autoplay** | Browsers block **autoplay with sound** until a **user gesture**. If the player came from **`Start.unity`**, `GameStart` calls `GeoWorldSessionStart.NotifyGameplayStartingFromTitleScreen()` before loading **`GeoWorldMain`**, and `BackgroundMusic` tries `Play()` on the first gameplay frame, then falls back to “wait for key/mouse” if the clip still is not playing. If the first scene is **`GeoWorldMain`** (no title), `BackgroundMusic` still waits for the first **key** or **mouse button** in `Update`. |
-| **Quit** | `GameOver` does **not** call `Application.Quit()` on WebGL; escape still exits play mode in the Editor. Standalone keeps `Application.Quit()`. |
+| **Quit / post-round** | After the round, **Enter** reloads gameplay and **B** returns to the title scene (see **`GameOver`**); **Escape** still exits play mode in the Editor, calls **`Application.Quit()`** on standalone, and on WebGL the UI explains closing the tab (no **`Application.Quit`**). |
 | **Input** | WebGL **player** builds use **legacy `Input` only** in `GameInput` to avoid WASM/JS re-entrancy with the new Input System (see **Tuning & configuration**). |
 
 ### Fullscreen API (Unity template)
@@ -217,7 +220,7 @@ Fullscreen is provided by the **Unity WebGL player template** (fullscreen contro
 1. **Unity Editor:** *File → Build Profiles* (or *Build Settings*), switch to **WebGL**, then **Build** into a clean folder (e.g. `Builds/WebGL/GeoWorld/`). Do **not** use the repository root as the output path.
 2. **Publishing:** enable **compression** (Brotli/Gzip) consistent with your host; enable **Decompression Fallback** if you are unsure about CDN headers.
 3. **Upload:** upload the **folder that contains `index.html`** at its root (for Netlify CLI: `--dir=Build/WebGL/GeoWorld`; for itch: zip those files).
-4. **Smoke-test:** first load, **click or press a key** to confirm music (autoplay policy), then **tab away** and back to confirm audio mutes/resumes.
+4. **Smoke-test:** first load, **click or press a key** to confirm music (autoplay policy), then **tab away** and back to confirm audio mutes/resumes and that an **in-progress round** does not advance while the tab is hidden (WebGL player build).
 
 ## WebGL CI and Netlify
 

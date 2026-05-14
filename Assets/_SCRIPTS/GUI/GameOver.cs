@@ -3,6 +3,7 @@ using System.Collections;
 using UnityEngine.UI;
 
 using UnityEngine.SceneManagement;
+using UnityEngine.InputSystem;
 #if UNITY_EDITOR
 using UnityEditor;
 #endif
@@ -16,6 +17,12 @@ public class GameOver : MonoBehaviour {
 
     [Tooltip("Optional tuning asset. Create via Assets → Create → GeoWorld → Game Balance.")]
     [SerializeField] private GameBalance gameBalance;
+
+    [Tooltip("Reload this scene for \"Play again\" (must be in Build Settings).")]
+    [SerializeField] string gameplaySceneName = "GeoWorldMain";
+
+    [Tooltip("Title scene for \"return to title\" (must be in Build Settings).")]
+    [SerializeField] string titleSceneName = "Start";
 
     private GameObject player;
     private PlayerCharacter m_Player;
@@ -47,6 +54,13 @@ public class GameOver : MonoBehaviour {
 
     Text m_BossHudCounter;
     Text m_BossScoreboardCounter;
+
+    bool _endGameScoreboardApplied;
+    string _lastEndGameTitle;
+    int _lastEndGameEnemyKills = int.MinValue;
+    int _lastEndGameGreaterKills = int.MinValue;
+    int _lastEndGameBossKills = int.MinValue;
+    int _lastEndGameBossBonusScore = int.MinValue;
 
 
     // Use this for initialization
@@ -154,20 +168,26 @@ public class GameOver : MonoBehaviour {
             {
                 m_TimeFrozen = true;
                 Time.timeScale = 0f;
+                if (textTimer != null) textTimer.enabled = false;
+                if (textEnemyCounter != null) textEnemyCounter.enabled = false;
+                if (textGreaterEnemyCounter != null) textGreaterEnemyCounter.enabled = false;
+                if (m_BossHudCounter != null) m_BossHudCounter.enabled = false;
             }
-            if (textTimer != null) textTimer.enabled = false;
-            if (textEnemyCounter != null) textEnemyCounter.enabled = false;
-            if (textGreaterEnemyCounter != null) textGreaterEnemyCounter.enabled = false;
-            if (m_BossHudCounter != null) m_BossHudCounter.enabled = false;
 
-            if (playerDied)
-                ApplyEndGameUi("Game Over! You died!");
-            else
-                ApplyEndGameUi("Congratulations! You saved GeoWorld!");
+            // With Time.timeScale = 0, the Input System may not advance action phases every frame unless we tick it.
+            if (Time.timeScale < 0.01f)
+                InputSystem.Update();
 
-            SetQuitInstructions();
-            LayoutEndGameScoreboardAndQuit();
-            HandleQuitRequest();
+            string title = playerDied ? "Game Over! You died!" : "Congratulations! You saved GeoWorld!";
+            if (ShouldRefreshEndGameScoreboard(title))
+            {
+                ApplyEndGameUi(title);
+                SetQuitInstructions();
+                LayoutEndGameScoreboardAndQuit();
+                RememberEndGameScoreboardState(title);
+            }
+
+            HandlePostRoundInput();
         }
         else
         {
@@ -186,6 +206,33 @@ public class GameOver : MonoBehaviour {
             }
         }
 
+    }
+
+    bool ShouldRefreshEndGameScoreboard(string title)
+    {
+        if (!_endGameScoreboardApplied)
+            return true;
+        if (title != _lastEndGameTitle)
+            return true;
+        if (enemyKillCounter != _lastEndGameEnemyKills)
+            return true;
+        if (greaterEnemyKillCounter != _lastEndGameGreaterKills)
+            return true;
+        if (bossKillCounter != _lastEndGameBossKills)
+            return true;
+        if (bossBonusScoreTotal != _lastEndGameBossBonusScore)
+            return true;
+        return false;
+    }
+
+    void RememberEndGameScoreboardState(string title)
+    {
+        _endGameScoreboardApplied = true;
+        _lastEndGameTitle = title;
+        _lastEndGameEnemyKills = enemyKillCounter;
+        _lastEndGameGreaterKills = greaterEnemyKillCounter;
+        _lastEndGameBossKills = bossKillCounter;
+        _lastEndGameBossBonusScore = bossBonusScoreTotal;
     }
 
     void ApplyEndGameUi(string title)
@@ -265,16 +312,31 @@ public class GameOver : MonoBehaviour {
     void SetQuitInstructions()
     {
         if (pressButtonToCloseGame == null) return;
-#if UNITY_WEBGL && !UNITY_EDITOR
-        pressButtonToCloseGame.text = "Thanks for playing! You can close this browser tab.";
+#if UNITY_EDITOR
+        pressButtonToCloseGame.text = "Enter: Play again   B: Title screen   Esc: Exit play mode";
+#elif UNITY_WEBGL && !UNITY_EDITOR
+        pressButtonToCloseGame.text = "Enter: Play again   B: Title screen\nEsc: Close this tab (browser UI).";
 #else
-        pressButtonToCloseGame.text = "Press 'esc' to close the Game";
+        pressButtonToCloseGame.text = "Enter: Play again   B: Title screen   Esc: Quit";
 #endif
     }
 
-    void HandleQuitRequest()
+    void HandlePostRoundInput()
     {
-        if (!GameInput.PauseOrQuitUp) return;
+        if (GameInput.PostRoundReplayUp)
+        {
+            LoadSceneResumingTime(gameplaySceneName);
+            return;
+        }
+
+        if (GameInput.PostRoundTitleUp)
+        {
+            LoadSceneResumingTime(titleSceneName);
+            return;
+        }
+
+        if (!GameInput.PauseOrQuitUp)
+            return;
 #if UNITY_EDITOR
         EditorApplication.ExitPlaymode();
 #elif UNITY_WEBGL
@@ -282,6 +344,18 @@ public class GameOver : MonoBehaviour {
 #else
         Application.Quit();
 #endif
+    }
+
+    void LoadSceneResumingTime(string sceneName)
+    {
+        if (string.IsNullOrWhiteSpace(sceneName))
+        {
+            Debug.LogWarning("GeoWorld: GameOver scene name is empty; cannot load scene.");
+            return;
+        }
+
+        Time.timeScale = 1f;
+        SceneManager.LoadScene(sceneName);
     }
 
 
