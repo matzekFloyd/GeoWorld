@@ -71,6 +71,39 @@ public class GameBalance : ScriptableObject
 
     [Tooltip("Mana restored when a boss dies.")]
     public float killRestoreManaBoss = 20f;
+
+    [Header("Level-up max HP / max mana (variance)")]
+    [Tooltip(
+        "Baseline max HP gained on level-up = 45 + (new level) × 22. Each level rolls independently for HP and for mana (not a shared quality roll). " +
+        "Uses UnityEngine.Random; injectable/seeded RNG is a follow-up for tests/replays.")]
+    public float levelUpMaxHealthGainMinMultiplier = 0.88f;
+
+    [Tooltip("Upper multiplier applied to the baseline HP delta before rounding.")]
+    public float levelUpMaxHealthGainMaxMultiplier = 1.12f;
+
+    [Tooltip(
+        "Hard floor: after the random roll, the HP gain is at least this fraction of the baseline delta (rounded). " +
+        "Documented minimum gain vs the old deterministic curve — tune with min/max multipliers.")]
+    [Range(0.5f, 1f)]
+    public float levelUpMaxHealthGainFloorFractionOfBaseline = 0.82f;
+
+    [Tooltip("Baseline max mana gained on level-up = 18 + (new level) × 12.")]
+    public float levelUpMaxManaGainMinMultiplier = 0.88f;
+
+    [Tooltip("Upper multiplier applied to the baseline mana delta before rounding.")]
+    public float levelUpMaxManaGainMaxMultiplier = 1.12f;
+
+    [Tooltip("Hard floor for mana gain vs baseline delta (rounded), same idea as HP.")]
+    [Range(0.5f, 1f)]
+    public float levelUpMaxManaGainFloorFractionOfBaseline = 0.82f;
+
+    void OnValidate()
+    {
+        levelUpMaxHealthGainMinMultiplier = Mathf.Clamp(levelUpMaxHealthGainMinMultiplier, 0.05f, 3f);
+        levelUpMaxHealthGainMaxMultiplier = Mathf.Clamp(levelUpMaxHealthGainMaxMultiplier, 0.05f, 3f);
+        levelUpMaxManaGainMinMultiplier = Mathf.Clamp(levelUpMaxManaGainMinMultiplier, 0.05f, 3f);
+        levelUpMaxManaGainMaxMultiplier = Mathf.Clamp(levelUpMaxManaGainMaxMultiplier, 0.05f, 3f);
+    }
 }
 
 /// <summary>
@@ -184,5 +217,64 @@ public static class GameBalanceHelper
             pc.changeCurrentHealth(hp);
         if (mp > 0f)
             pc.changeCurrentMana(mp);
+    }
+
+    /// <summary>Deterministic baseline HP delta for one level-up at <paramref name="newPlayerLevel"/> (after increment).</summary>
+    public static float GetLevelUpMaxHealthBaselineDelta(int newPlayerLevel)
+    {
+        int lv = Mathf.Max(1, newPlayerLevel);
+        return 45f + lv * 22f;
+    }
+
+    /// <summary>Deterministic baseline mana delta for one level-up at <paramref name="newPlayerLevel"/> (after increment).</summary>
+    public static float GetLevelUpMaxManaBaselineDelta(int newPlayerLevel)
+    {
+        int lv = Mathf.Max(1, newPlayerLevel);
+        return 18f + lv * 12f;
+    }
+
+    /// <summary>
+    /// Random max-HP gain for one level-up. Independent from <see cref="RollLevelUpMaxManaDelta"/>.
+    /// Uses <see cref="UnityEngine.Random"/>; no injectable RNG yet (ticket follow-up).
+    /// </summary>
+    public static int RollLevelUpMaxHealthDelta(int newPlayerLevel)
+    {
+        float baseline = GetLevelUpMaxHealthBaselineDelta(newPlayerLevel);
+        float minM = Active != null ? Active.levelUpMaxHealthGainMinMultiplier : 0.88f;
+        float maxM = Active != null ? Active.levelUpMaxHealthGainMaxMultiplier : 1.12f;
+        float floorF = Active != null ? Active.levelUpMaxHealthGainFloorFractionOfBaseline : 0.82f;
+        return RollBoundedIntDelta(baseline, minM, maxM, floorF);
+    }
+
+    /// <summary>
+    /// Random max-mana gain for one level-up. Independent from <see cref="RollLevelUpMaxHealthDelta"/>.
+    /// </summary>
+    public static int RollLevelUpMaxManaDelta(int newPlayerLevel)
+    {
+        float baseline = GetLevelUpMaxManaBaselineDelta(newPlayerLevel);
+        float minM = Active != null ? Active.levelUpMaxManaGainMinMultiplier : 0.88f;
+        float maxM = Active != null ? Active.levelUpMaxManaGainMaxMultiplier : 1.12f;
+        float floorF = Active != null ? Active.levelUpMaxManaGainFloorFractionOfBaseline : 0.82f;
+        return RollBoundedIntDelta(baseline, minM, maxM, floorF);
+    }
+
+    static int RollBoundedIntDelta(float baseline, float minMultiplier, float maxMultiplier, float floorFractionOfBaseline)
+    {
+        if (baseline <= 0f)
+            return 0;
+        float lo = minMultiplier;
+        float hi = maxMultiplier;
+        if (lo > hi)
+        {
+            float t = lo;
+            lo = hi;
+            hi = t;
+        }
+
+        float rolled = Random.Range(baseline * lo, baseline * hi);
+        int gain = Mathf.RoundToInt(rolled);
+        floorFractionOfBaseline = Mathf.Clamp01(floorFractionOfBaseline);
+        int floorGain = Mathf.Max(1, Mathf.RoundToInt(baseline * floorFractionOfBaseline));
+        return Mathf.Max(gain, floorGain);
     }
 }

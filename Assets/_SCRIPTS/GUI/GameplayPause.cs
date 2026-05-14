@@ -26,7 +26,7 @@ public sealed class GameplayPause : MonoBehaviour
         if (_gameOver == null)
         {
 #if UNITY_2023_1_OR_NEWER
-            _gameOver = Object.FindFirstObjectByType<GameOver>();
+            _gameOver = Object.FindAnyObjectByType<GameOver>();
 #else
             _gameOver = FindObjectOfType<GameOver>();
 #endif

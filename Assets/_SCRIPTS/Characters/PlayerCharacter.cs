@@ -137,10 +137,10 @@ public class PlayerCharacter : BaseCharacter {
         {
             curLevel += 1;
 
-            maxHealth += Mathf.RoundToInt(45f + curLevel * 22f);
+            maxHealth += GameBalanceHelper.RollLevelUpMaxHealthDelta(curLevel);
             curHealth = maxHealth;
 
-            maxMana += Mathf.RoundToInt(18f + curLevel * 12f);
+            maxMana += GameBalanceHelper.RollLevelUpMaxManaDelta(curLevel);
             curMana = maxMana;
 
             curExp = 0;
