@@ -67,7 +67,14 @@ public class GeoShotProjectile : GeoShot{
 
         if (something.gameObject.tag == "Enemy" && geoManiaActivated())
         {
-            something.gameObject.GetComponent<EnemyAI>().getDamaged(damagePerHit, transform.position, CombatHitSeverity.Light);
+            var ai = something.gameObject.GetComponent<EnemyAI>();
+            if (ai != null)
+            {
+                float d = damagePerHit;
+                bool crit = _ownerPlayer != null && _ownerGeoShot != null &&
+                    PlayerCritHelper.TryApplyGeoManiaCrit(_ownerPlayer, ref d, _ownerGeoShot.manacost, _ownerGeoShot.maxCooldown);
+                ai.getDamaged(d, transform.position, CombatHitSeverity.Light, crit);
+            }
             _hit = true;
             if (_lifetimeRoutine != null)
             {
@@ -82,7 +89,14 @@ public class GeoShotProjectile : GeoShot{
         }
         else if (something.gameObject.tag == "Enemy")
         {
-            something.gameObject.GetComponent<EnemyAI>().getDamaged(damagePerHit, transform.position, CombatHitSeverity.Light);
+            var ai = something.gameObject.GetComponent<EnemyAI>();
+            if (ai != null)
+            {
+                float d = damagePerHit;
+                bool crit = _ownerPlayer != null && _ownerGeoShot != null &&
+                    PlayerCritHelper.TryApplyGeoManiaCrit(_ownerPlayer, ref d, _ownerGeoShot.manacost, _ownerGeoShot.maxCooldown);
+                ai.getDamaged(d, transform.position, CombatHitSeverity.Light, crit);
+            }
             _hit = true;
             if (_lifetimeRoutine != null)
             {

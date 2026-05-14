@@ -53,15 +53,43 @@ public class EnemyAI : MonoBehaviour {
         target = GameObject.FindGameObjectWithTag("Player1");
         enemyGenerator = GameObject.FindGameObjectWithTag("Spawn");
 
-        spawnTimer = Random.Range(10f, 15f);
-        attDistance = 10;
-        huntDistance = Random.Range(150f, 300f);
-
         attackTimer = 0;
-        coolDown = Random.Range(1.5f, 3f);
         spawnFinished = false;
         damagedFinished = false;
         freezeFinished = false;
+    }
+
+    /// <summary>Called from <see cref="EnemyCharacter.setEnemyStatistics"/> after enable order resolves.</summary>
+    public void ApplyCombatTuning(int playerLevel, bool isBoss)
+    {
+        float lv = Mathf.Max(1, playerLevel);
+        float pressure = Mathf.Clamp01((lv - 1f) / 42f);
+
+        float moveMul = Mathf.Lerp(1f, 1.45f, pressure);
+        moveSpeed = Random.Range(7.6f, 11.8f) * moveMul;
+        if (isBoss)
+            moveSpeed *= 1.1f;
+        moveSpeed = Mathf.Min(moveSpeed, isBoss ? 30f : 26f);
+
+        rotationSpeed = Random.Range(5.4f, 10.5f) * Mathf.Lerp(1f, 1.35f, pressure);
+        rotationSpeed = Mathf.Min(rotationSpeed, 23f);
+
+        damage = Random.Range(lv * 6f, lv * 10f);
+
+        float cd = Random.Range(1.85f, 3.05f) / (1f + (lv - 1f) * 0.052f);
+        coolDown = Mathf.Max(isBoss ? 0.5f : 0.34f, cd);
+        if (isBoss)
+            coolDown *= 1.12f;
+
+        huntDistance = Random.Range(128f, 205f) + lv * 7f;
+        if (isBoss)
+            huntDistance += 55f;
+        huntDistance = Mathf.Min(huntDistance, 440f);
+
+        attDistance = Mathf.Clamp(9.2f + lv * 0.14f, 9.2f, 14.5f);
+
+        spawnTimer = Random.Range(7f, 12.5f) / (1f + (lv - 1f) * 0.038f);
+        spawnTimer = Mathf.Max(isBoss ? 3f : 2.2f, spawnTimer);
     }
         
     // Update is called once per frame
@@ -170,7 +198,9 @@ public class EnemyAI : MonoBehaviour {
             var pcHealth = target.GetComponent<PlayerCharacter>();
             if (pcHealth != null)
             {
-                pcHealth.ApplyIncomingDamage(damage, transform.position, true, CombatHitSeverity.Light);
+                EnsureEnemyCharacter();
+                bool bossTier = m_EnemyCharacter != null && m_EnemyCharacter.isBoss;
+                pcHealth.ApplyIncomingDamage(damage, transform.position, true, CombatHitSeverity.Light, true, bossTier);
                 GameplaySfx.Instance?.PlayEnemyMeleeAttack();
             }
             attackTimer = coolDown;
@@ -182,7 +212,7 @@ public class EnemyAI : MonoBehaviour {
 
         float direction = Vector3.Dot(dir, transform.forward);
 
-        if (!(distance <= 10f && direction > 0))
+        if (!(distance <= attDistance && direction > 0))
         {
             state = State.Hunt;
         }
@@ -256,7 +286,7 @@ public class EnemyAI : MonoBehaviour {
         }
     }
 
-    public void getDamaged(float damage, Vector3? hitOrigin = null, CombatHitSeverity severity = CombatHitSeverity.Light)
+    public void getDamaged(float damage, Vector3? hitOrigin = null, CombatHitSeverity severity = CombatHitSeverity.Light, bool isCritical = false)
     {
         EnsureEnemyCharacter();
         if (m_EnemyCharacter == null)
@@ -269,7 +299,7 @@ public class EnemyAI : MonoBehaviour {
 
         var fx = CombatFeedback.Instance;
         if (fx != null)
-            fx.NotifyEnemyHit(transform, damage, hitOrigin, severity);
+            fx.NotifyEnemyHit(transform, damage, hitOrigin, severity, isCritical);
     }
 
     private void damaged()
@@ -354,6 +384,7 @@ public class EnemyAI : MonoBehaviour {
     private void die()
     {
         EnsureEnemyCharacter();
+        BattleLog.AppendEnemyDefeated(m_EnemyCharacter);
         var bossDie = m_EnemyCharacter != null && m_EnemyCharacter.isBoss;
         GameplaySfx.Instance?.PlayEnemyDie(bossDie);
 

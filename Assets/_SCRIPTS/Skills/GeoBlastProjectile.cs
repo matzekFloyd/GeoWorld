@@ -60,7 +60,13 @@ public class GeoBlastProjectile : GeoBlast
 
         if (something.gameObject.tag == "Enemy" && geoManiaActivated())
         {
-            something.gameObject.GetComponent<EnemyAI>().getDamaged(_ownerGeoBlast.getGeoBlastDmg(), transform.position, CombatHitSeverity.Light);
+            var ai = something.gameObject.GetComponent<EnemyAI>();
+            if (ai != null)
+            {
+                float d = _ownerGeoBlast.getGeoBlastDmg();
+                bool crit = PlayerCritHelper.TryApplyGeoManiaCrit(_ownerPlayer, ref d, _ownerGeoBlast.manacost, _ownerGeoBlast.maxCooldown);
+                ai.getDamaged(d, transform.position, CombatHitSeverity.Light, crit);
+            }
             _hit = true;
             if (_lifetimeRoutine != null)
             {
@@ -72,7 +78,13 @@ public class GeoBlastProjectile : GeoBlast
         }
         else if (something.gameObject.tag == "Enemy")
         {
-            something.gameObject.GetComponent<EnemyAI>().getDamaged(_ownerGeoBlast.getGeoBlastDmg(), transform.position, CombatHitSeverity.Light);
+            var ai = something.gameObject.GetComponent<EnemyAI>();
+            if (ai != null)
+            {
+                float d = _ownerGeoBlast.getGeoBlastDmg();
+                bool crit = PlayerCritHelper.TryApplyGeoManiaCrit(_ownerPlayer, ref d, _ownerGeoBlast.manacost, _ownerGeoBlast.maxCooldown);
+                ai.getDamaged(d, transform.position, CombatHitSeverity.Light, crit);
+            }
             _hit = true;
             if (_lifetimeRoutine != null)
             {

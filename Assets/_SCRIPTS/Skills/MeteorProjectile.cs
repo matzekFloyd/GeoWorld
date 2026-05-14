@@ -7,6 +7,7 @@ public class MeteorProjectile : Meteor {
     public float explosionRange;
 
     PlayerCharacter _ownerPlayer;
+    Meteor _ownerMeteor;
     bool _hit;
     Coroutine _lifetimeRoutine;
 
@@ -20,7 +21,10 @@ public class MeteorProjectile : Meteor {
         }
         _lifetimeRoutine = StartCoroutine(LifetimeThenRelease(10f));
         if (player != null)
+        {
             _ownerPlayer = player.GetComponent<PlayerCharacter>();
+            _ownerMeteor = player.GetComponent<Meteor>();
+        }
     }
 
     void OnDisable()
@@ -85,17 +89,32 @@ public class MeteorProjectile : Meteor {
             {
                 if (colliders[i].gameObject.tag == "Enemy")
                 {
-
                     float distanceFromCenter = (colliders[i].transform.position - pos).magnitude;
                     float distanceRatio = distanceFromCenter / explosionRange;
                     float distanceMultiplier = distanceRatio * 0.75f + 0.25f;
 
-                    colliders[i].gameObject.GetComponent<EnemyAI>().getDamaged(levelDamageScale * distanceMultiplier, pos, CombatHitSeverity.Heavy);
+                    float dmg = levelDamageScale * distanceMultiplier;
+                    bool crit = _ownerPlayer != null && _ownerMeteor != null &&
+                        PlayerCritHelper.TryApplyGeoManiaCrit(_ownerPlayer, ref dmg, _ownerMeteor.manacost, _ownerMeteor.maxCooldown);
+
+                    var enemyAi = colliders[i].gameObject.GetComponent<EnemyAI>();
+                    if (enemyAi != null)
+                        enemyAi.getDamaged(dmg, pos, CombatHitSeverity.Heavy, crit);
+                    else
+                    {
+                        var greaterAi = colliders[i].gameObject.GetComponent<GreaterEnemyAI>();
+                        if (greaterAi != null)
+                            greaterAi.getDamaged(dmg, pos, CombatHitSeverity.Heavy, crit);
+                    }
 
                     if (colliders[i].transform.position != pos)
                     {
-                        Vector3 directionFromCenter = (colliders[i].transform.position - pos).normalized;
-                        colliders[i].GetComponent<Rigidbody>().AddForce(directionFromCenter * 100 * distanceMultiplier, ForceMode.Impulse);
+                        var rb = colliders[i].GetComponent<Rigidbody>();
+                        if (rb != null)
+                        {
+                            Vector3 directionFromCenter = (colliders[i].transform.position - pos).normalized;
+                            rb.AddForce(directionFromCenter * 100 * distanceMultiplier, ForceMode.Impulse);
+                        }
                     }
                 }
 

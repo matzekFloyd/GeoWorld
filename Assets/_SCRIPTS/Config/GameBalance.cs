@@ -30,6 +30,9 @@ public class GameBalance : ScriptableObject
         "Example: 5 with min level 10 → bosses at levels 10, 15, 20, … Only one living boss is allowed; see EnemyGenerator.")]
     public int bossSpawnLevelMultiple = 5;
 
+    [Tooltip("For player level ≥ 3: extra desired living enemies ≈ (level − 2)² × this, added after level × enemiesPerPlayerLevel.")]
+    public float livingEnemyQuadraticSpawnBonus = 0.1f;
+
     [Header("Boss encounter (EnemyCharacter.isBoss)")]
     [Tooltip("Seconds (real time, unscaled) before the boss entity spawns after the UI telegraph begins.")]
     public float bossTelegraphDurationSeconds = 2.2f;
@@ -115,4 +118,23 @@ public static class GameBalanceHelper
     public static float BossBonusXpFlat => Active != null ? Active.bossBonusXpFlat : 250f;
 
     public static int BossScoreBonusOnKill => Active != null ? Active.bossScoreBonusOnKill : 500;
+
+    /// <summary>Target living normal + pooled wave enemies from balance asset (with high-level curve).</summary>
+    public static int GetDesiredLivingEnemyCount(int playerLevel)
+    {
+        int level = Mathf.Max(1, playerLevel);
+        if (level <= 1)
+            return EnemiesAtPlayerLevel1;
+        if (level == 2)
+            return EnemiesAtPlayerLevel2;
+
+        int linear = level * EnemiesPerPlayerLevel;
+        float quadCoef = Active != null ? Active.livingEnemyQuadraticSpawnBonus : 0.1f;
+        int extra = 0;
+        if (quadCoef > 0f && level >= 3)
+            extra = Mathf.RoundToInt((level - 2) * (level - 2) * quadCoef);
+
+        int total = linear + extra;
+        return Mathf.Max(EnemiesAtPlayerLevel2, total);
+    }
 }

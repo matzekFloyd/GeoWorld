@@ -13,6 +13,25 @@ public class PlayerCharacter : BaseCharacter {
 
     private GameObject enemyGenerator;
 
+    [Header("Health regen (out of combat)")]
+    [Tooltip("Seconds with no incoming damage before passive HP regen can begin.")]
+    [SerializeField] float healthRegenLockoutAfterHitSeconds = 3f;
+
+    [Tooltip("After lockout, seconds of not being hit to approach full regen rate.")]
+    [SerializeField] float healthRegenRampToFullSeconds = 18f;
+
+    [Tooltip("Minimum HP/s right when lockout ends (before ramp).")]
+    [SerializeField] float healthRegenPerSecondFloor = 0.18f;
+
+    [Tooltip("Added to floor/scaling: maxHealth × this per second at full ramp.")]
+    [SerializeField] float healthRegenMaxFractionOfMaxPerSecond = 0.0065f;
+
+    [Tooltip("Extra HP/s at full ramp from player level.")]
+    [SerializeField] float healthRegenPerSecondPerLevelAtFull = 0.55f;
+
+    /// <summary>Time.time of last enemy/missile damage via <see cref="ApplyIncomingDamage"/>. Negative = never damaged this run.</summary>
+    float _lastIncomingDamageTime = -1f;
+
 
 
 
@@ -26,14 +45,19 @@ public class PlayerCharacter : BaseCharacter {
     }
 
     /// <summary>Enemy/missile damage with world origin for directional HUD feedback.</summary>
-    public void ApplyIncomingDamage(float amount, Vector3 worldSource, bool hasWorldSource, CombatHitSeverity severity)
+    /// <param name="rollEnemyCrit">When true, may crit if player level ≥ <see cref="EnemyCritHelper.MinPlayerLevelForEnemyCrit"/>.</param>
+    /// <param name="enemyAttackerIsBossTier">Higher crit chance (bosses, big missiles, etc.).</param>
+    public void ApplyIncomingDamage(float amount, Vector3 worldSource, bool hasWorldSource, CombatHitSeverity severity, bool rollEnemyCrit = false, bool enemyAttackerIsBossTier = false)
     {
         if (amount <= 0f)
             return;
-        ApplyHealthChange(-Mathf.Abs(amount));
+        float dealt = Mathf.Abs(amount);
+        bool enemyCrit = rollEnemyCrit && EnemyCritHelper.TryApplyEnemyCritAgainstPlayer(this, ref dealt, enemyAttackerIsBossTier);
+        ApplyHealthChange(-dealt);
+        _lastIncomingDamageTime = Time.time;
         var fx = CombatFeedback.Instance;
         if (fx != null)
-            fx.NotifyPlayerDamaged(amount, worldSource, hasWorldSource, severity);
+            fx.NotifyPlayerDamaged(dealt, worldSource, hasWorldSource, severity, enemyCrit);
     }
 
     private void setInitialPlayerStatistics()
@@ -42,10 +66,10 @@ public class PlayerCharacter : BaseCharacter {
         curLevel = 1;
         maxLevel = 50;
         expNeededForLevelUp = 100;
-        maxHealth = 100;
+        maxHealth = 110;
         curHealth = maxHealth;
-        baseHealthRegeneration = 0.5f;
-        maxMana = 100;
+        baseHealthRegeneration = 0f;
+        maxMana = 75;
         curMana = maxMana;
 
     }
@@ -56,10 +80,7 @@ public class PlayerCharacter : BaseCharacter {
         changeCurrentHealth(0);
         changeCurrentMana(calculateManaRegeneration(curLevel) * Time.deltaTime);
 
-        if(curLevel < 5)
-        {
-            regnerateHealth(baseHealthRegeneration * Time.deltaTime);
-        }
+        regnerateHealth(GetPassiveHealthRegenPerSecond() * Time.deltaTime);
 
         //FÜR TESTZWECKE
         if (GameInput.DebugInstantLevelUpUp && GameSession.Instance != null && GameSession.Instance.IsRunActive)
@@ -89,10 +110,10 @@ public class PlayerCharacter : BaseCharacter {
         {
             curLevel += 1;
 
-            maxHealth += curLevel * 100;
+            maxHealth += Mathf.RoundToInt(45f + curLevel * 22f);
             curHealth = maxHealth;
 
-            maxMana += curLevel * 25;
+            maxMana += Mathf.RoundToInt(18f + curLevel * 12f);
             curMana = maxMana;
 
             curExp = 0;
@@ -141,9 +162,36 @@ public class PlayerCharacter : BaseCharacter {
 
     public float calculateManaRegeneration(int curLevel)
     {
-        float manaReg;
-        manaReg = curLevel * 1.25f;
-        return manaReg;
+        // Stronger per-level growth than the post-nerf linear-only curve; mild L² so high levels keep pace with skill costs.
+        return 0.5f + curLevel * 0.7f + curLevel * curLevel * 0.005f;
+    }
+
+    /// <summary>Passive HP/s from staying safe (0 during post-hit lockout, then ramps up).</summary>
+    public float GetPassiveHealthRegenPerSecond()
+    {
+        float now = Time.time;
+        if (_lastIncomingDamageTime < 0f)
+            return GetPeakPassiveHealthRegenPerSecond();
+
+        float sinceHit = now - _lastIncomingDamageTime;
+        if (sinceHit < healthRegenLockoutAfterHitSeconds)
+            return 0f;
+
+        float rampT = sinceHit - healthRegenLockoutAfterHitSeconds;
+        float u = healthRegenRampToFullSeconds > 0.001f
+            ? Mathf.Clamp01(rampT / healthRegenRampToFullSeconds)
+            : 1f;
+        u = u * u * (3f - 2f * u);
+        float minR = healthRegenPerSecondFloor + maxHealth * 0.00035f;
+        float maxR = GetPeakPassiveHealthRegenPerSecond();
+        return Mathf.Lerp(minR, maxR, u);
+    }
+
+    /// <summary>HP/s when fully ramped; used for GeoPhysics HUD and internal cap.</summary>
+    public float GetPeakPassiveHealthRegenPerSecond()
+    {
+        return maxHealth * healthRegenMaxFractionOfMaxPerSecond
+               + curLevel * healthRegenPerSecondPerLevelAtFull;
     }
 
     public bool skillAvailable(int levelNeeded)

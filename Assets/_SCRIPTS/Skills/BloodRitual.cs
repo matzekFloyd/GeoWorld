@@ -22,13 +22,13 @@ public class BloodRitual : SkillBasic{
         if (m_Player == null) return;
         maxCooldown = 50 / m_Player.getCurLevel();
         bloodTimerCooldown = 1.5f;
-        manacost = m_Player.getCurLevel() * 5;
+        manacost = 10f + m_Player.getCurLevel() * 9f;
         updateCoolDown();
 
 
         if (m_Player.skillAvailable(6))
         {
-            if (GameInput.SkillBloodRitualUp && requiredMana() && CanUseSkills())
+            if (GameInput.SkillBloodRitualHeld && requiredMana() && CanUseSkills())
             {
                 if (curCooldown == 0)
                 {

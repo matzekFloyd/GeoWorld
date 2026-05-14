@@ -200,48 +200,48 @@ public static class GameInput
         return string.Join("/", parts);
     }
 
-    public static bool FirePrimaryDown
+    public static bool FirePrimaryHeld
     {
         get
         {
             Ensure();
-            return s_FirePrimary != null && s_FirePrimary.WasPressedThisFrame();
+            return s_FirePrimary != null && s_FirePrimary.IsPressed();
         }
     }
 
-    public static bool SkillHealUp
+    public static bool SkillHealHeld
     {
         get
         {
             Ensure();
-            return s_SkillHeal != null && s_SkillHeal.WasReleasedThisFrame();
+            return s_SkillHeal != null && s_SkillHeal.IsPressed();
         }
     }
 
-    public static bool SkillMeteorUp
+    public static bool SkillMeteorHeld
     {
         get
         {
             Ensure();
-            return s_SkillMeteor != null && s_SkillMeteor.WasReleasedThisFrame();
+            return s_SkillMeteor != null && s_SkillMeteor.IsPressed();
         }
     }
 
-    public static bool SkillBloodRitualUp
+    public static bool SkillBloodRitualHeld
     {
         get
         {
             Ensure();
-            return s_SkillBloodRitual != null && s_SkillBloodRitual.WasReleasedThisFrame();
+            return s_SkillBloodRitual != null && s_SkillBloodRitual.IsPressed();
         }
     }
 
-    public static bool SkillFreezeTimeUp
+    public static bool SkillFreezeTimeHeld
     {
         get
         {
             Ensure();
-            return s_SkillFreezeTime != null && s_SkillFreezeTime.WasReleasedThisFrame();
+            return s_SkillFreezeTime != null && s_SkillFreezeTime.IsPressed();
         }
     }
 
@@ -267,12 +267,12 @@ public static class GameInput
         }
     }
 
-    public static bool SecondaryMouseDown
+    public static bool SecondaryFireHeld
     {
         get
         {
             Ensure();
-            return s_SecondaryFire != null && s_SecondaryFire.WasPressedThisFrame();
+            return s_SecondaryFire != null && s_SecondaryFire.IsPressed();
         }
     }
 }

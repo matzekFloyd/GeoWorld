@@ -62,19 +62,19 @@ public sealed class FloatingDamageNumberPool : MonoBehaviour
         return enemy.position + Vector3.up * 1.9f;
     }
 
-    public void SpawnEnemyDamage(Transform enemyRoot, float damage, CombatHitSeverity severity, bool isBoss)
+    public void SpawnEnemyDamage(Transform enemyRoot, float damage, CombatHitSeverity severity, bool isBoss, bool isCritical = false)
     {
         if (!_bound || _hostRt == null)
             return;
         if (_active >= _maxActive)
             return;
 
-        StyleEnemy(damage, severity, isBoss, out var txt, out var col, out float font, out float rise, out float life);
+        StyleEnemy(damage, severity, isBoss, isCritical, out var txt, out var col, out float font, out float rise, out float life);
         var world = GetDamagePopupWorldPosition(enemyRoot);
         SpawnInternal(world, txt, col, life, rise, font);
     }
 
-    public void SpawnPlayerDamageTaken(Transform playerRoot, float damage, CombatHitSeverity severity)
+    public void SpawnPlayerDamageTaken(Transform playerRoot, float damage, CombatHitSeverity severity, bool isEnemyCritical = false)
     {
         if (!_bound || _hostRt == null || playerRoot == null)
             return;
@@ -83,8 +83,8 @@ public sealed class FloatingDamageNumberPool : MonoBehaviour
 
         var world = playerRoot.position + Vector3.up * 1.7f;
         int d = Mathf.Max(1, Mathf.RoundToInt(damage));
-        string txt = "-" + d.ToString();
-        StylePlayer(severity, out var col, out float font, out float rise, out float life);
+        string txt = isEnemyCritical ? "-" + d + "!" : "-" + d.ToString();
+        StylePlayer(severity, isEnemyCritical, out var col, out float font, out float rise, out float life);
         SpawnInternal(world, txt, col, life, rise, font);
     }
 
@@ -102,34 +102,54 @@ public sealed class FloatingDamageNumberPool : MonoBehaviour
         n.Show(_hostRt, world, text, color, life, rise, font);
     }
 
-    static void StyleEnemy(float damage, CombatHitSeverity severity, bool isBoss, out string text, out Color color, out float font, out float rise, out float life)
+    static void StyleEnemy(float damage, CombatHitSeverity severity, bool isBoss, bool isCritical, out string text, out Color color, out float font, out float rise, out float life)
     {
         int d = Mathf.Max(1, Mathf.RoundToInt(damage));
-        text = d.ToString();
+        text = isCritical ? d + "!" : d.ToString();
         life = severity == CombatHitSeverity.Heavy ? 1.05f : severity == CombatHitSeverity.Medium ? 0.92f : 0.82f;
         rise = severity == CombatHitSeverity.Heavy ? 3.1f : severity == CombatHitSeverity.Medium ? 2.35f : 2f;
         font = severity == CombatHitSeverity.Heavy ? 30f : severity == CombatHitSeverity.Medium ? 26f : 22f;
-        color = severity switch
+        if (isCritical)
         {
-            CombatHitSeverity.Heavy => new Color(1f, 0.42f, 0.1f, 1f),
-            CombatHitSeverity.Medium => new Color(1f, 0.78f, 0.32f, 1f),
-            _ => new Color(1f, 0.94f, 0.72f, 1f),
-        };
+            color = new Color(1f, 0.92f, 0.2f, 1f);
+            font *= 1.14f;
+            rise *= 1.08f;
+            life *= 1.05f;
+        }
+        else
+        {
+            color = severity switch
+            {
+                CombatHitSeverity.Heavy => new Color(1f, 0.42f, 0.1f, 1f),
+                CombatHitSeverity.Medium => new Color(1f, 0.78f, 0.32f, 1f),
+                _ => new Color(1f, 0.94f, 0.72f, 1f),
+            };
+        }
         if (isBoss)
-            color = Color.Lerp(color, new Color(0.92f, 0.4f, 1f, 1f), 0.32f);
+            color = Color.Lerp(color, new Color(0.92f, 0.4f, 1f, 1f), isCritical ? 0.18f : 0.32f);
     }
 
-    static void StylePlayer(CombatHitSeverity severity, out Color color, out float font, out float rise, out float life)
+    static void StylePlayer(CombatHitSeverity severity, bool isEnemyCritical, out Color color, out float font, out float rise, out float life)
     {
         life = severity == CombatHitSeverity.Heavy ? 1f : severity == CombatHitSeverity.Medium ? 0.88f : 0.78f;
         rise = severity == CombatHitSeverity.Heavy ? 2.9f : 2.1f;
         font = severity == CombatHitSeverity.Heavy ? 29f : severity == CombatHitSeverity.Medium ? 25f : 21f;
-        color = severity switch
+        if (isEnemyCritical)
         {
-            CombatHitSeverity.Heavy => new Color(1f, 0.2f, 0.15f, 1f),
-            CombatHitSeverity.Medium => new Color(1f, 0.45f, 0.38f, 1f),
-            _ => new Color(1f, 0.65f, 0.58f, 1f),
-        };
+            color = new Color(1f, 0.55f, 0.12f, 1f);
+            font *= 1.12f;
+            rise *= 1.08f;
+            life *= 1.05f;
+        }
+        else
+        {
+            color = severity switch
+            {
+                CombatHitSeverity.Heavy => new Color(1f, 0.2f, 0.15f, 1f),
+                CombatHitSeverity.Medium => new Color(1f, 0.45f, 0.38f, 1f),
+                _ => new Color(1f, 0.65f, 0.58f, 1f),
+            };
+        }
     }
 
     internal void Release(FloatingDamageNumber n)

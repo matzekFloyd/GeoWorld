@@ -36,7 +36,11 @@ public class GreaterEnemyAI : MonoBehaviour {
 
     private float damagedTimer;
     private bool damagedFinished;
-    //System.DateTime timeDmgWasApplied;
+
+    float _moveImpulse = 5f;
+    float _moveCooldownAfterStrafe;
+    float _shootSmallCd;
+    float _shootBigCd;
 
     void OnEnable()
     {
@@ -45,15 +49,35 @@ public class GreaterEnemyAI : MonoBehaviour {
         enemyGenerator = GameObject.FindGameObjectWithTag("Spawn");
         target = GameObject.FindGameObjectWithTag("Player1");
 
-        spawnTimer = 5;
-        moveTimer = 3;
-        shootSmallTimer = 2;
-        shootBigTimer = 10;
         spawnFinished = false;
         moveFinished = false;
         shootSmallFinished = false;
         shootBigFinished = false;
         damagedFinished = false;
+    }
+
+    /// <summary>Called from <see cref="EnemyCharacter.setEnemyStatistics"/>.</summary>
+    public void ApplyCombatTuning(int playerLevel, bool isBoss)
+    {
+        float lv = Mathf.Max(1, playerLevel);
+        float pressure = Mathf.Clamp01((lv - 1f) / 38f);
+
+        spawnTimer = Mathf.Max(1.8f, 4.6f - lv * 0.085f - (isBoss ? 0.4f : 0f));
+        _moveCooldownAfterStrafe = Mathf.Max(0.95f, 2.65f - lv * 0.052f);
+        moveTimer = _moveCooldownAfterStrafe;
+
+        _shootSmallCd = Mathf.Max(0.55f, 2.15f - lv * 0.062f);
+        _shootBigCd = Mathf.Max(5f, 13.2f - lv * 0.13f);
+        if (isBoss)
+        {
+            _shootSmallCd *= 0.9f;
+            _shootBigCd *= 0.88f;
+        }
+
+        shootSmallTimer = _shootSmallCd;
+        shootBigTimer = _shootBigCd;
+
+        _moveImpulse = 4.8f + lv * 0.2f + pressure * 3.5f;
     }
 
     // Update is called once per frame
@@ -124,8 +148,8 @@ public class GreaterEnemyAI : MonoBehaviour {
         float y = Random.Range(-1, +1);
         float z = Random.Range(-1, +1);
         Vector3 direction = new Vector3(x, y, z).normalized;
-        this.gameObject.GetComponent<Rigidbody>().AddForce(direction * 5, ForceMode.Impulse);
-        moveTimer = 3;
+        this.gameObject.GetComponent<Rigidbody>().AddForce(direction * _moveImpulse, ForceMode.Impulse);
+        moveTimer = _moveCooldownAfterStrafe;
 
         state = State.Idle;
     }
@@ -140,7 +164,7 @@ public class GreaterEnemyAI : MonoBehaviour {
             missile = Instantiate(smallHomingMissile, transform.position, transform.rotation);
         GeoWorldObjectPools.ApplyProjectileGravityIfApplicable(missile);
         GameplaySfx.Instance?.PlayEnemyRangedAttack();
-        shootSmallTimer = 3;
+        shootSmallTimer = _shootSmallCd;
 
         state = State.Idle;
 
@@ -158,13 +182,13 @@ public class GreaterEnemyAI : MonoBehaviour {
         GeoWorldObjectPools.ApplyProjectileGravityIfApplicable(missile);
 
         GameplaySfx.Instance?.PlayEnemyRangedAttack();
-        shootBigTimer = 15;
+        shootBigTimer = _shootBigCd;
 
         state = State.Idle;
 
     }
 
-    public void getDamaged(float damage, Vector3? hitOrigin = null, CombatHitSeverity severity = CombatHitSeverity.Light)
+    public void getDamaged(float damage, Vector3? hitOrigin = null, CombatHitSeverity severity = CombatHitSeverity.Light, bool isCritical = false)
     {
         damagedTimer = 0.2f;
         damagedFinished = false;
@@ -175,7 +199,7 @@ public class GreaterEnemyAI : MonoBehaviour {
 
         var fx = CombatFeedback.Instance;
         if (fx != null)
-            fx.NotifyEnemyHit(transform, damage, hitOrigin, severity);
+            fx.NotifyEnemyHit(transform, damage, hitOrigin, severity, isCritical);
     }
 
     private void damaged()
@@ -305,6 +329,7 @@ public class GreaterEnemyAI : MonoBehaviour {
     private void die()
     {
         var ec = this.gameObject.GetComponent<EnemyCharacter>();
+        BattleLog.AppendEnemyDefeated(ec);
         var boss = ec != null && ec.isBoss;
         GameplaySfx.Instance?.PlayEnemyDie(boss);
 

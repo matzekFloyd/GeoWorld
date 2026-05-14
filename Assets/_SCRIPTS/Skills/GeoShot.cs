@@ -14,18 +14,19 @@ public class GeoShot : SkillBasic
     void Start()
     {
         curCooldown = 0;
-        maxCooldown = 0.15f;
+        maxCooldown = 0.24f;
     }
 
     // Update is called once per frame
     void Update()
     {
         if (m_Player == null) return;
-        manacost = m_Player.getCurLevel();
-        geoShotDmg = m_Player.getCurLevel() * 20f;
+        int lv = m_Player.getCurLevel();
+        manacost = 0.85f + lv * 0.38f;
+        geoShotDmg = lv * 18f;
         updateCoolDown();
         
-        if (GameInput.FirePrimaryDown && requiredMana() && CanUseSkills())
+        if (GameInput.FirePrimaryHeld && requiredMana() && CanUseSkills())
         {
             if (curCooldown == 0)
             {
