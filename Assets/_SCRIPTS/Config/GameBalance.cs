@@ -12,6 +12,40 @@ public class GameBalance : ScriptableObject
     [Tooltip("Countdown in seconds until GeoWorld win condition.")]
     public float roundDurationSeconds = 1200f;
 
+    [Header("Progression")]
+    [Tooltip("Maximum player level for a single run.")]
+    public int maxPlayerLevel = 100;
+
+    // Playtest targets (#101): ~level 22–28 by 15:00 and ~28–36 by 20:00 on a typical kill pace
+    // (tune xpPerLevelSquaredCoefficient / soft cap if runs feel starved or spike too hard).
+
+    [Tooltip("XP required while at level 1 to reach level 2.")]
+    public float firstLevelExpToReachLevel2 = 100f;
+
+    [Tooltip("After level 2, XP to advance ≈ (current level)² × this (soft-capped toward max level).")]
+    public float xpPerLevelSquaredCoefficient = 48f;
+
+    [Tooltip("From this level onward, XP requirements ease off so level 100 stays reachable in long runs.")]
+    public int xpSoftCapStartLevel = 32;
+
+    [Tooltip("Level at which the XP soft cap reaches xpSoftCapMinFactorAtMaxLevel.")]
+    public int xpSoftCapEndLevel = 100;
+
+    [Range(0.3f, 1f)]
+    [Tooltip("Multiplier on XP requirement at xpSoftCapEndLevel (1 = no reduction).")]
+    public float xpSoftCapMinFactorAtMaxLevel = 0.52f;
+
+    [Tooltip("Unlock levels: GeoShot, GeoBlast, GeoPhysics, Heal, Meteor, Blood Ritual, Freeze Time, Geo Mania.")]
+    public int[] skillUnlockLevels = { 1, 1, 1, 4, 8, 12, 16, 20 };
+
+    [Header("Enemy combat scaling (late game)")]
+    [Tooltip("Above this player level, enemy HP/XP use a damped effective level so level 50–100 is not instant death.")]
+    public int enemyStatSoftCapStartLevel = 42;
+
+    [Range(0.2f, 1f)]
+    [Tooltip("Effective-level factor at maxPlayerLevel (lower = gentler enemy growth).")]
+    public float enemyStatScaleFactorAtMaxLevel = 0.38f;
+
     [Header("Spawning")]
     [Tooltip("Desired living normal enemies at player level 1 (intro).")]
     public int enemiesAtPlayerLevel1 = 12;
@@ -20,18 +54,21 @@ public class GameBalance : ScriptableObject
     public int enemiesAtPlayerLevel2 = 28;
 
     [Tooltip("For player level 3 and up: desired count ≈ level × this (see EnemyGenerator).")]
-    public int enemiesPerPlayerLevel = 22;
+    public int enemiesPerPlayerLevel = 14;
+
+    [Tooltip("Hard cap on desired living enemies (levels 50–100 stay playable).")]
+    public int maxLivingEnemyCap = 200;
 
     [Tooltip("Player level at which greater enemies and boss spawn logic can activate (see EnemyGenerator).")]
-    public int greaterEnemiesMinPlayerLevel = 10;
+    public int greaterEnemiesMinPlayerLevel = 12;
 
     [Tooltip(
         "Boss spawn cadence: a boss is scheduled when player level ≥ greaterEnemiesMinPlayerLevel AND level is a multiple of this value. " +
-        "Example: 5 with min level 10 → bosses at levels 10, 15, 20, … Only one living boss is allowed; see EnemyGenerator.")]
-    public int bossSpawnLevelMultiple = 5;
+        "Example: 10 with min level 12 → bosses at 20, 30, 40, … Only one living boss is allowed; see EnemyGenerator.")]
+    public int bossSpawnLevelMultiple = 10;
 
     [Tooltip("For player level ≥ 3: extra desired living enemies ≈ (level − 2)² × this, added after level × enemiesPerPlayerLevel.")]
-    public float livingEnemyQuadraticSpawnBonus = 0.1f;
+    public float livingEnemyQuadraticSpawnBonus = 0.035f;
 
     [Header("Boss encounter (EnemyCharacter.isBoss)")]
     [Tooltip("Seconds (real time, unscaled) before the boss entity spawns after the UI telegraph begins.")]
@@ -104,6 +141,12 @@ public class GameBalance : ScriptableObject
 
     void OnValidate()
     {
+        maxPlayerLevel = Mathf.Max(1, maxPlayerLevel);
+        xpSoftCapEndLevel = Mathf.Clamp(xpSoftCapEndLevel, 2, maxPlayerLevel);
+        xpSoftCapStartLevel = Mathf.Clamp(xpSoftCapStartLevel, 2, xpSoftCapEndLevel);
+        maxLivingEnemyCap = Mathf.Max(enemiesAtPlayerLevel2, maxLivingEnemyCap);
+        if (skillUnlockLevels == null || skillUnlockLevels.Length < 8)
+            skillUnlockLevels = new[] { 1, 1, 1, 4, 8, 12, 16, 20 };
         levelUpMaxHealthGainMinMultiplier = Mathf.Clamp(levelUpMaxHealthGainMinMultiplier, 0.05f, 3f);
         levelUpMaxHealthGainMaxMultiplier = Mathf.Clamp(levelUpMaxHealthGainMaxMultiplier, 0.05f, 3f);
         levelUpMaxManaGainMinMultiplier = Mathf.Clamp(levelUpMaxManaGainMinMultiplier, 0.05f, 3f);
@@ -117,6 +160,10 @@ public class GameBalance : ScriptableObject
 /// </summary>
 public static class GameBalanceHelper
 {
+    public const int SkillSlotCount = 8;
+
+    static readonly int[] DefaultSkillUnlockLevels = { 1, 1, 1, 4, 8, 12, 16, 20 };
+
     public static GameBalance Active { get; private set; }
 
     public static void Register(GameBalance balance)
@@ -125,6 +172,70 @@ public static class GameBalanceHelper
     }
 
     public static float RoundDurationSeconds => Active != null ? Active.roundDurationSeconds : 1200f;
+
+    public static int MaxPlayerLevel => Active != null ? Mathf.Max(1, Active.maxPlayerLevel) : 100;
+
+    public static int SkillUnlockGeoShot => GetSkillUnlockLevel(0);
+    public static int SkillUnlockGeoBlast => GetSkillUnlockLevel(1);
+    public static int SkillUnlockGeoPhysics => GetSkillUnlockLevel(2);
+    public static int SkillUnlockHeal => GetSkillUnlockLevel(3);
+    public static int SkillUnlockMeteor => GetSkillUnlockLevel(4);
+    public static int SkillUnlockBloodRitual => GetSkillUnlockLevel(5);
+    public static int SkillUnlockFreezeTime => GetSkillUnlockLevel(6);
+    public static int SkillUnlockGeoMania => GetSkillUnlockLevel(7);
+
+    /// <summary>Enemy crits vs the player unlock when Geo Mania unlocks (same cadence as overheal).</summary>
+    public static int EnemyCritMinPlayerLevel => SkillUnlockGeoMania;
+
+    public static int GetSkillUnlockLevel(int skillIndex)
+    {
+        if (skillIndex < 0 || skillIndex >= SkillSlotCount)
+            return 1;
+        if (Active != null && Active.skillUnlockLevels != null && skillIndex < Active.skillUnlockLevels.Length)
+            return Mathf.Max(1, Active.skillUnlockLevels[skillIndex]);
+        return DefaultSkillUnlockLevels[skillIndex];
+    }
+
+    /// <summary>XP required while at <paramref name="level"/> to reach the next level.</summary>
+    public static float GetExpRequiredAtLevel(int level)
+    {
+        int lv = Mathf.Max(1, level);
+        if (lv <= 1)
+            return Active != null ? Active.firstLevelExpToReachLevel2 : 100f;
+
+        float coef = Active != null ? Active.xpPerLevelSquaredCoefficient : 48f;
+        float req = lv * lv * coef;
+
+        int softStart = Active != null ? Active.xpSoftCapStartLevel : 32;
+        int softEnd = Active != null ? Mathf.Max(softStart, Active.xpSoftCapEndLevel) : 100;
+        float minFactor = Active != null ? Active.xpSoftCapMinFactorAtMaxLevel : 0.52f;
+
+        if (lv <= softStart || softEnd <= softStart)
+            return req;
+
+        float t = Mathf.Clamp01((lv - softStart) / (float)(softEnd - softStart));
+        return req * Mathf.Lerp(1f, minFactor, t);
+    }
+
+    /// <summary>Dampens enemy HP/XP scaling so player levels 50–100 stay survivable.</summary>
+    public static float GetEnemyScalingLevel(float playerLevel)
+    {
+        int lv = Mathf.Max(1, Mathf.RoundToInt(playerLevel));
+        int capStart = Active != null ? Active.enemyStatSoftCapStartLevel : 42;
+        int maxLv = MaxPlayerLevel;
+        if (lv <= capStart)
+            return lv;
+
+        float endFactor = Active != null ? Active.enemyStatScaleFactorAtMaxLevel : 0.38f;
+        if (maxLv <= capStart)
+            return lv * endFactor;
+
+        float t = Mathf.Clamp01((lv - capStart) / (float)(maxLv - capStart));
+        float factor = Mathf.Lerp(1f, endFactor, t);
+        return capStart + (lv - capStart) * factor;
+    }
+
+    static int MaxLivingEnemyCap => Active != null ? Mathf.Max(Active.enemiesAtPlayerLevel2, Active.maxLivingEnemyCap) : 200;
 
     /// <summary>Target living count at player level 1. Values ≤ 0 fall back to 12 so older assets never request zero.</summary>
     public static int EnemiesAtPlayerLevel1
@@ -154,14 +265,14 @@ public static class GameBalanceHelper
         get
         {
             if (Active == null)
-                return 22;
-            return Active.enemiesPerPlayerLevel > 0 ? Active.enemiesPerPlayerLevel : 22;
+                return 14;
+            return Active.enemiesPerPlayerLevel > 0 ? Active.enemiesPerPlayerLevel : 14;
         }
     }
 
-    public static int GreaterEnemiesMinPlayerLevel => Active != null ? Active.greaterEnemiesMinPlayerLevel : 10;
+    public static int GreaterEnemiesMinPlayerLevel => Active != null ? Active.greaterEnemiesMinPlayerLevel : 12;
 
-    public static int BossSpawnLevelMultiple => Active != null ? Mathf.Max(1, Active.bossSpawnLevelMultiple) : 5;
+    public static int BossSpawnLevelMultiple => Active != null ? Mathf.Max(1, Active.bossSpawnLevelMultiple) : 10;
 
     public static float BossTelegraphDurationSeconds =>
         Active != null && Active.bossTelegraphDurationSeconds > 0.05f ? Active.bossTelegraphDurationSeconds : 2.2f;
@@ -201,13 +312,14 @@ public static class GameBalanceHelper
             return EnemiesAtPlayerLevel2;
 
         int linear = level * EnemiesPerPlayerLevel;
-        float quadCoef = Active != null ? Active.livingEnemyQuadraticSpawnBonus : 0.1f;
+        float quadCoef = Active != null ? Active.livingEnemyQuadraticSpawnBonus : 0.035f;
         int extra = 0;
         if (quadCoef > 0f && level >= 3)
             extra = Mathf.RoundToInt((level - 2) * (level - 2) * quadCoef);
 
         int total = linear + extra;
-        return Mathf.Max(EnemiesAtPlayerLevel2, total);
+        total = Mathf.Max(EnemiesAtPlayerLevel2, total);
+        return Mathf.Min(total, MaxLivingEnemyCap);
     }
 
     /// <summary>HP/mana bump when an enemy dies; uses <see cref="GameBalance"/> kill-sustain fields (boss &gt; greater &gt; normal).</summary>

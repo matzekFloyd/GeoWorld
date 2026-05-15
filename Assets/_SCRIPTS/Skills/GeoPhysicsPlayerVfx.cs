@@ -8,7 +8,7 @@ using UnityEngine;
 [DefaultExecutionOrder(50)]
 public sealed class GeoPhysicsPlayerVfx : SkillBasic
 {
-    const int GeoPhysicsSkillSlotLevel = 1;
+    static int GeoPhysicsSkillSlotLevel => GameBalanceHelper.SkillUnlockGeoPhysics;
 
     [Header("Foot dust")]
     [SerializeField] float footDustMinHorizontalSpeed = 0.35f;

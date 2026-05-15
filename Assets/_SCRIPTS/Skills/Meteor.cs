@@ -23,7 +23,7 @@ public class Meteor : SkillBasic {
         meteorDamage = m_Player.getCurLevel() * 50f;
         updateCoolDown();
 
-        if (m_Player.skillAvailable(4))
+        if (m_Player.skillAvailable(GameBalanceHelper.SkillUnlockMeteor))
         {
             if (GameInput.SkillMeteorHeld && requiredMana() && CanUseSkills())
             {

@@ -51,18 +51,19 @@ public class EnemyCharacter : BaseCharacter {
     public void setEnemyStatistics(float curPlayerLevel, float expNeededForLevelUp)
     {
         iAmGreaterEnemy = this.gameObject.GetComponent<GreaterEnemyAI>() != null;
+        float scaleLevel = GameBalanceHelper.GetEnemyScalingLevel(curPlayerLevel);
 
         if (iAmGreaterEnemy)
         {
-            maxHealth = curPlayerLevel * 215f * Random.Range(20f, 30f);
+            maxHealth = scaleLevel * 215f * Random.Range(20f, 30f);
             curHealth = maxHealth;
-            expOnKill = curPlayerLevel * 285f;
+            expOnKill = scaleLevel * 285f;
         }
         else
         {
-            maxHealth = curPlayerLevel * 28f * Random.Range(2.1f, 3.1f);
+            maxHealth = scaleLevel * 28f * Random.Range(2.1f, 3.1f);
             curHealth = maxHealth;
-            expOnKill = curPlayerLevel * 15.5f;
+            expOnKill = scaleLevel * 15.5f;
         }
 
         if (isBoss)
@@ -72,7 +73,7 @@ public class EnemyCharacter : BaseCharacter {
             expOnKill *= GameBalanceHelper.BossExpMultiplier;
         }
 
-        int lv = Mathf.Max(1, Mathf.RoundToInt(curPlayerLevel));
+        int lv = Mathf.Max(1, Mathf.RoundToInt(GameBalanceHelper.GetEnemyScalingLevel(curPlayerLevel)));
 
         var enemyAI = GetComponent<EnemyAI>();
         if (enemyAI != null)

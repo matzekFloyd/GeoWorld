@@ -3,11 +3,11 @@ using System.Collections;
 
 public class PlayerCharacter : BaseCharacter {
 
-    /// <summary>With Geo Mania (level 10), HP may exceed <see cref="maxHealth"/> up to this multiple (overheal).</summary>
-    public const float GeoManiaOverhealMaxMultiplier = 2f;
+    /// <summary>With Geo Mania, HP may exceed <see cref="maxHealth"/> up to this multiple (overheal).</summary>
+    public const float GeoManiaOverhealMaxMultiplier = 1.5f;
 
     /// <summary>Blood Ritual may push <see cref="curMana"/> up to this × <see cref="maxMana"/> (overmana).</summary>
-    public const float BloodRitualOvermanaMaxMultiplier = 2f;
+    public const float BloodRitualOvermanaMaxMultiplier = 1.5f;
 
     private GameObject enemy;
 
@@ -36,7 +36,7 @@ public class PlayerCharacter : BaseCharacter {
     [SerializeField] float healthRegenPerSecondPerLevelAtFull = 0.42f;
 
     [Tooltip("Above this level, per-level regen contribution is reduced to limit late-game kiting.")]
-    [SerializeField] int healthRegenPerLevelSoftCapLevel = 28;
+    [SerializeField] int healthRegenPerLevelSoftCapLevel = 45;
 
     [SerializeField, Range(0.2f, 1f)]
     float healthRegenPerLevelAboveSoftCapMultiplier = 0.4f;
@@ -99,17 +99,19 @@ public class PlayerCharacter : BaseCharacter {
 
     protected override float GetHealthUpperClamp()
     {
-        if (skillAvailable(10))
+        if (skillAvailable(GameBalanceHelper.SkillUnlockGeoMania))
             return maxHealth * GeoManiaOverhealMaxMultiplier;
         return maxHealth;
     }
+
+    float GetManaUpperClamp() => maxMana * BloodRitualOvermanaMaxMultiplier;
 
     private void setInitialPlayerStatistics()
     {
         curExp = 0;
         curLevel = 1;
-        maxLevel = 50;
-        expNeededForLevelUp = 100;
+        maxLevel = GameBalanceHelper.MaxPlayerLevel;
+        expNeededForLevelUp = GameBalanceHelper.GetExpRequiredAtLevel(1);
         maxHealth = 110;
         curHealth = maxHealth;
         baseHealthRegeneration = 0f;
@@ -156,25 +158,30 @@ public class PlayerCharacter : BaseCharacter {
     {
         if(curLevel < maxLevel)
         {
+            const float nominalEpsilon = 0.5f;
+            bool hadOverheal = curHealth > maxHealth + nominalEpsilon;
+            bool hadOvermana = curMana > maxMana + nominalEpsilon;
+            float overhealFractionAboveNominal = hadOverheal && maxHealth > 0.001f
+                ? (curHealth - maxHealth) / maxHealth
+                : 0f;
+            float overmanaFractionAboveNominal = hadOvermana && maxMana > 0.001f
+                ? (curMana - maxMana) / maxMana
+                : 0f;
+
             curLevel += 1;
 
-            float dHealth = GameBalanceHelper.RollLevelUpMaxHealthDelta(curLevel);
-            maxHealth += dHealth;
-            curHealth += dHealth;
-            float hpCap = GetHealthUpperClamp();
-            if (curHealth > hpCap)
-                curHealth = hpCap;
+            maxHealth += GameBalanceHelper.RollLevelUpMaxHealthDelta(curLevel);
+            maxMana += GameBalanceHelper.RollLevelUpMaxManaDelta(curLevel);
 
-            float dMana = GameBalanceHelper.RollLevelUpMaxManaDelta(curLevel);
-            maxMana += dMana;
-            curMana += dMana;
-            float manaCap = maxMana * BloodRitualOvermanaMaxMultiplier;
-            if (curMana > manaCap)
-                curMana = manaCap;
+            ApplyLevelUpResourceRestore(
+                hadOverheal,
+                hadOvermana,
+                overhealFractionAboveNominal,
+                overmanaFractionAboveNominal);
 
             curExp = 0;
 
-            expNeededForLevelUp = curLevel * curLevel * 75;
+            expNeededForLevelUp = GameBalanceHelper.GetExpRequiredAtLevel(curLevel);
                                 
         }
 
@@ -190,6 +197,31 @@ public class PlayerCharacter : BaseCharacter {
 
      }
 
+    /// <summary>Fills HP/mana to 100% of new nominal max; keeps overheal/overmana ratio if it was active before the level-up.</summary>
+    void ApplyLevelUpResourceRestore(
+        bool hadOverheal,
+        bool hadOvermana,
+        float overhealFractionAboveNominal,
+        float overmanaFractionAboveNominal)
+    {
+        curHealth = maxHealth;
+        curMana = maxMana;
+
+        if (hadOverheal && skillAvailable(GameBalanceHelper.SkillUnlockGeoMania) && overhealFractionAboveNominal > 0f)
+        {
+            curHealth = Mathf.Min(
+                GetHealthUpperClamp(),
+                maxHealth + maxHealth * overhealFractionAboveNominal);
+        }
+
+        if (hadOvermana && overmanaFractionAboveNominal > 0f)
+        {
+            curMana = Mathf.Min(
+                GetManaUpperClamp(),
+                maxMana + maxMana * overmanaFractionAboveNominal);
+        }
+    }
+
     public void regnerateHealth(float valueHealthRegenaration)
     {
         if (valueHealthRegenaration <= 0f)
@@ -202,7 +234,7 @@ public class PlayerCharacter : BaseCharacter {
 
     void ApplyOverhealDecay()
     {
-        if (overhealDegenerationPerSecond <= 0f || !skillAvailable(10))
+        if (overhealDegenerationPerSecond <= 0f || !skillAvailable(GameBalanceHelper.SkillUnlockGeoMania))
             return;
         float overhead = curHealth - maxHealth;
         if (overhead <= 0.0001f)
@@ -229,8 +261,7 @@ public class PlayerCharacter : BaseCharacter {
     {
         if (amount <= 0f || maxMana < 0.0001f)
             return;
-        float cap = maxMana * BloodRitualOvermanaMaxMultiplier;
-        curMana = Mathf.Min(curMana + amount, cap);
+        curMana = Mathf.Min(curMana + amount, GetManaUpperClamp());
     }
 
     public void changeCurrentMana(float change)

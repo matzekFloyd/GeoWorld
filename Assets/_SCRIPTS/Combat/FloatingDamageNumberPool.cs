@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -97,9 +98,32 @@ public sealed class FloatingDamageNumberPool : MonoBehaviour
             font *= 0.92f;
         }
 
+        EnsureDamageNumbersHostActive();
         var n = _free.Count > 0 ? _free.Pop() : CreateInstance();
         _active++;
         n.Show(_hostRt, world, text, color, life, rise, font);
+    }
+
+    /// <summary>Activates the damage-numbers host and canvas ancestors (HUD may be hidden until the first <see cref="UserInterface"/> refresh).</summary>
+    internal void EnsureDamageNumbersHostActive()
+    {
+        if (_hostRt == null)
+            return;
+        var t = _hostRt.transform;
+        while (t != null)
+        {
+            if (!t.gameObject.activeSelf)
+                t.gameObject.SetActive(true);
+            t = t.parent;
+        }
+    }
+
+    internal Coroutine StartNumberRoutine(IEnumerator routine) => StartCoroutine(routine);
+
+    internal void StopNumberRoutine(Coroutine routine)
+    {
+        if (routine != null)
+            StopCoroutine(routine);
     }
 
     static void StyleEnemy(float damage, CombatHitSeverity severity, bool isBoss, bool isCritical, out string text, out Color color, out float font, out float rise, out float life)
@@ -156,6 +180,7 @@ public sealed class FloatingDamageNumberPool : MonoBehaviour
     {
         if (n == null)
             return;
+        n.NotifyReturnedToPool();
         n.gameObject.SetActive(false);
         n.transform.SetParent(_storage, false);
         _active = Mathf.Max(0, _active - 1);

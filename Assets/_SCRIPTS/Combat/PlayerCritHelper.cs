@@ -14,7 +14,7 @@ public static class PlayerCritHelper
     /// </summary>
     public static bool TryApplyGeoManiaCrit(PlayerCharacter pc, ref float damage, float currentManacost, float maxCooldownSeconds)
     {
-        if (pc == null || damage <= 0f || !pc.skillAvailable(10))
+        if (pc == null || damage <= 0f || !pc.skillAvailable(GameBalanceHelper.SkillUnlockGeoMania))
             return false;
 
         float mc = Mathf.Max(0f, currentManacost);

@@ -9,7 +9,7 @@ using UnityEngine;
 /// <para><b>Boss cadence</b> (also documented in README): when player level is at least
 /// <see cref="GameBalanceHelper.GreaterEnemiesMinPlayerLevel"/> and is a multiple of
 /// <see cref="GameBalanceHelper.BossSpawnLevelMultiple"/>, a boss encounter is <b>scheduled once per level</b>.
-/// Example with defaults (10, 5): bosses at levels 10, 15, 20, …</para>
+/// Example with defaults (12, 10): bosses at levels 20, 30, 40, …</para>
 /// <para>A <b>telegraph</b> runs first (HUD banner + screen tint + optional SFX, real-time seconds from
 /// <see cref="GameBalanceHelper.BossTelegraphDurationSeconds"/>), then the boss prefab spawns if there is still
 /// no living boss in <see cref="targets"/> and <see cref="endBossPrefab"/> / spawn transforms are valid.

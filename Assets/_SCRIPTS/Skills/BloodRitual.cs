@@ -27,7 +27,7 @@ public class BloodRitual : SkillBasic{
         updateCoolDown();
 
 
-        if (m_Player.skillAvailable(6))
+        if (m_Player.skillAvailable(GameBalanceHelper.SkillUnlockBloodRitual))
         {
             if (GameInput.SkillBloodRitualHeld && requiredMana() && CanUseSkills())
             {

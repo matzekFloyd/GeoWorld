@@ -1,12 +1,12 @@
 # Backlog index (polish + balance)
 
-Source of truth: GitHub Issues ? this file is only a short pointer for Unity Editor / local habit.
+Source of truth: GitHub Issues — this file is only a short pointer for Unity Editor / local habit.
 
 - Meta (migration checklist, closed when done): https://github.com/matzekFloyd/GeoWorld/issues/53
 - QoL / polish epic: https://github.com/matzekFloyd/GeoWorld/issues/43
 - Good first issues (polish): https://github.com/matzekFloyd/GeoWorld/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22
 
-## Former bullets ? issues
+## Former bullets → issues
 
 | Topic | Issue |
 |------|-------|
@@ -21,15 +21,15 @@ Source of truth: GitHub Issues ? this file is only a short pointer for Unity Edi
 | Battle log | https://github.com/matzekFloyd/GeoWorld/issues/85 |
 | Minimum enemy count up | https://github.com/matzekFloyd/GeoWorld/issues/86 |
 | Lifesteal weaker (balance) | https://github.com/matzekFloyd/GeoWorld/issues/87 |
-| Legacy ?error see screenshot? | https://github.com/matzekFloyd/GeoWorld/issues/88 |
+| Legacy “error see screenshot” | https://github.com/matzekFloyd/GeoWorld/issues/88 |
 
 ## Descoped / already in game
 
-- **Max level 50:** Already set in `PlayerCharacter` (`maxLevel`); no open issue.
+- **Max level 100:** `GameBalance.maxPlayerLevel` + `PlayerCharacter` via `GameBalanceHelper` (#101).
 
 ## Old German list (archived)
 
-HOHE PRIORIT?T: Boss wertvoller machen / Counter / St?rke ? ? #77  
-MITTLER: DMG Richtung; Kreuz ? DMG/heal Anzeige ? ? #78, #79  
-NIEDRIG: Bloodritual Balken ?ber max; Lifesteal Spray; Meteor-Radius; Blutflecken fade; Freeze Umkreis; BattleLog ? ? #80?#85  
-BALANCING: Gegnerzahl; Screenshot-Error; Lifesteal schw?cher ? ? #86?#88; Max 50 erledigt.
+HOHE PRIORITÄT: Boss wertvoller machen / Counter / Stärke → → #77  
+MITTLER: DMG Richtung; Kreuz → DMG/heal Anzeige → → #78, #79  
+NIEDRIG: Bloodritual Balken über max; Lifesteal Spray; Meteor-Radius; Blutflecken fade; Freeze Umkreis; BattleLog → → #80–#85  
+BALANCING: Gegnerzahl; Screenshot-Error; Lifesteal schwächer → → #86–#88; Max 100 (#101).

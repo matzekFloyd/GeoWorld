@@ -14,10 +14,8 @@ public sealed class GameplayHudView : MonoBehaviour
 {
     public static GameplayHudView Instance { get; private set; }
 
-    /// <summary>True while the boss-incoming fullscreen telegraph is playing (level-10 overlap with Geo Mania unlock).</summary>
+    /// <summary>True while the boss-incoming fullscreen telegraph is playing.</summary>
     public bool IsBossTelegraphActive => _bossIncomingRoutine != null;
-
-    static readonly int[] SkillMinLevels = { 1, 1, 1, 2, 4, 6, 8, 10 };
 
     /// <summary>Multiplier applied after <see cref="Image.SetNativeSize"/> on the crosshair (1 = texture pixel size at current Canvas scale).</summary>
     const float CrosshairDisplayScale = 0.5f;
@@ -1059,7 +1057,7 @@ public sealed class GameplayHudView : MonoBehaviour
 
         for (int i = 0; i < 8 && _columns != null; i++)
         {
-            if (curLevel < SkillMinLevels[i])
+            if (curLevel < GameBalanceHelper.GetSkillUnlockLevel(i))
                 continue;
 
             string k = keyLabels != null && i < keyLabels.Length ? keyLabels[i] ?? "" : "";
@@ -1094,7 +1092,7 @@ public sealed class GameplayHudView : MonoBehaviour
         int mask = 0;
         for (int i = 0; i < 8; i++)
         {
-            if (curLevel >= SkillMinLevels[i])
+            if (curLevel >= GameBalanceHelper.GetSkillUnlockLevel(i))
                 mask |= 1 << i;
         }
 
@@ -1105,7 +1103,7 @@ public sealed class GameplayHudView : MonoBehaviour
         int visibleCount = 0;
         for (int i = 0; i < 8; i++)
         {
-            bool vis = curLevel >= SkillMinLevels[i];
+            bool vis = curLevel >= GameBalanceHelper.GetSkillUnlockLevel(i);
             _lastSkillColVisible[i] = vis;
             var root = _columns[i].Root;
             if (root == null)
@@ -1126,7 +1124,7 @@ public sealed class GameplayHudView : MonoBehaviour
         int order = 0;
         for (int i = 0; i < 8; i++)
         {
-            if (curLevel < SkillMinLevels[i])
+            if (curLevel < GameBalanceHelper.GetSkillUnlockLevel(i))
                 continue;
             if (_columns[i].Root != null)
                 _columns[i].Root.transform.SetSiblingIndex(order++);

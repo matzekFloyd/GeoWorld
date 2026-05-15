@@ -1,12 +1,12 @@
 using UnityEngine;
 
 /// <summary>
-/// Enemy attacks can critically strike the player once the player reaches level 10.
+/// Enemy attacks can critically strike the player once the player reaches <see cref="MinPlayerLevelForEnemyCrit"/>.
 /// Bosses (and big homing missiles) use a higher crit chance than normal enemies.
 /// </summary>
 public static class EnemyCritHelper
 {
-    public const int MinPlayerLevelForEnemyCrit = 10;
+    public static int MinPlayerLevelForEnemyCrit => GameBalanceHelper.EnemyCritMinPlayerLevel;
 
     const float CritChanceNormal = 0.04f;
     const float CritChanceBossTier = 0.11f;
