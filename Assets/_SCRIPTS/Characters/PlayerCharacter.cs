@@ -45,13 +45,6 @@ public class PlayerCharacter : BaseCharacter {
     /// <summary>Time.time of last enemy/missile damage via <see cref="ApplyIncomingDamage"/>. Negative = never damaged this run.</summary>
     float _lastIncomingDamageTime = -1f;
 
-    [Header("Mana regen (idle ramp)")]
-    [Tooltip("Seconds without spending mana to reach maximum mana regen multiplier.")]
-    [SerializeField] float manaRegenRampIdleSeconds = 5f;
-
-    [Tooltip("Mana regen multiplier at full idle (1 = no bonus). Applied on top of base regen from level.")]
-    [SerializeField] float manaRegenMaxMultiplierAtFullIdle = 2.1f;
-
     /// <summary>Time.time of last mana spend (negative cost via <see cref="changeCurrentMana"/>). Negative = no spend yet this run.</summary>
     float _lastManaSpendTime = -1f;
 
@@ -149,10 +142,12 @@ public class PlayerCharacter : BaseCharacter {
 	void Update () {
 
         changeCurrentHealth(0);
-        float manaRegenBase = calculateManaRegeneration(curLevel);
-        changeCurrentMana(manaRegenBase * GetManaRegenIdleMultiplier() * Time.deltaTime);
+        float manaRegen = calculateManaRegeneration(curLevel)
+            * GetManaRegenIdleMultiplier()
+            * GetStatMultiplier();
+        changeCurrentMana(manaRegen * Time.deltaTime);
 
-        regnerateHealth(GetPassiveHealthRegenPerSecond() * Time.deltaTime);
+        regnerateHealth(GetPassiveHealthRegenPerSecond() * GetStatMultiplier() * Time.deltaTime);
 
         ApplyOverhealDecay();
         ApplyOvermanaDecay();
@@ -344,23 +339,21 @@ public class PlayerCharacter : BaseCharacter {
             GameplayHudView.Instance?.NotifyRecentHeal(change);
     }
 
-    public float calculateManaRegeneration(int curLevel)
-    {
-        // Stronger per-level growth than the post-nerf linear-only curve; mild L² so high levels keep pace with skill costs.
-        return 0.5f + curLevel * 0.7f + curLevel * curLevel * 0.005f;
-    }
+    public float calculateManaRegeneration(int curLevel) =>
+        GameBalanceHelper.GetManaRegenerationPerSecond(curLevel);
 
     /// <summary>Multiplier applied to base mana regen; rises the longer the player has not spent mana (see <see cref="changeCurrentMana"/> negative deltas).</summary>
     public float GetManaRegenIdleMultiplier()
     {
-        float maxM = Mathf.Max(1f, manaRegenMaxMultiplierAtFullIdle);
-        if (manaRegenRampIdleSeconds <= 0.001f)
+        float maxM = GameBalanceHelper.ManaRegenMaxMultiplierAtFullIdle;
+        float rampSec = GameBalanceHelper.ManaRegenRampIdleSeconds;
+        if (rampSec <= 0.001f)
             return maxM;
 
         float sinceSpend = _lastManaSpendTime < 0f
-            ? manaRegenRampIdleSeconds
+            ? rampSec
             : Time.time - _lastManaSpendTime;
-        float u = Mathf.Clamp01(sinceSpend / manaRegenRampIdleSeconds);
+        float u = Mathf.Clamp01(sinceSpend / rampSec);
         u = u * u * (3f - 2f * u);
         return Mathf.Lerp(1f, maxM, u);
     }

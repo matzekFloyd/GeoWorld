@@ -117,24 +117,41 @@ public class GameBalance : ScriptableObject
     [Tooltip("Bonus score accumulated when a boss is defeated (shown on end screen; separate from kill counts).")]
     public int bossScoreBonusOnKill = 500;
 
+    [Header("Mana regeneration (#104)")]
+    [Tooltip(
+        "Combat mana/s = base + level×linear + level²×quadratic (idle multiplier = 1). " +
+        "Playtest targets at nominal max mana, no run malus: L1 ~20s empty→full (~75 mana), " +
+        "L25 ~55s (~4.4k), L50 ~90s (~16k), L100 ~2.3 min (~62k). Idle ramp adds up to manaRegenMaxMultiplierAtFullIdle after manaRegenRampIdleSeconds.")]
+    public float manaRegenBaseConstant = 1f;
+
+    public float manaRegenPerLevel = 2.65f;
+
+    public float manaRegenPerLevelSquared = 0.019f;
+
+    [Tooltip("Seconds without spending mana to reach manaRegenMaxMultiplierAtFullIdle.")]
+    public float manaRegenRampIdleSeconds = 5f;
+
+    [Tooltip("Regen multiplier at full idle (applied on top of combat base regen).")]
+    public float manaRegenMaxMultiplierAtFullIdle = 2.1f;
+
     [Header("Kill sustain (on enemy death)")]
     [Tooltip("HP restored to the player when a normal enemy dies (same moment as kill XP).")]
     public float killRestoreHealthNormal = 4f;
 
     [Tooltip("Mana restored when a normal enemy dies.")]
-    public float killRestoreManaNormal = 3f;
+    public float killRestoreManaNormal = 4f;
 
     [Tooltip("HP restored when a greater enemy (non-boss) dies.")]
     public float killRestoreHealthGreater = 10f;
 
     [Tooltip("Mana restored when a greater enemy (non-boss) dies.")]
-    public float killRestoreManaGreater = 6f;
+    public float killRestoreManaGreater = 8f;
 
     [Tooltip("HP restored when a boss dies.")]
     public float killRestoreHealthBoss = 35f;
 
     [Tooltip("Mana restored when a boss dies.")]
-    public float killRestoreManaBoss = 20f;
+    public float killRestoreManaBoss = 24f;
 
     [Header("Level-up max HP / max mana (variance)")]
     [Tooltip(
@@ -166,6 +183,17 @@ public class GameBalance : ScriptableObject
     [Range(0.35f, 1f)]
     public float skillManaCostScale = 0.78f;
 
+    [Tooltip("Meteor mana cost = (base + level × perLevel) × skillManaCostScale.")]
+    public float meteorManaCostBase = 40f;
+
+    public float meteorManaCostPerLevel = 34f;
+
+    [Tooltip("Explosion damage scale per player level (× distance falloff in MeteorProjectile).")]
+    public float meteorExplosionDamagePerLevel = 130f;
+
+    [Tooltip("Rounded damage shown on the Meteor skill HUD column (approximate center hit).")]
+    public float meteorHudDamagePerLevel = 65f;
+
     void OnValidate()
     {
         maxPlayerLevel = Mathf.Max(1, maxPlayerLevel);
@@ -179,6 +207,15 @@ public class GameBalance : ScriptableObject
         levelUpMaxManaGainMinMultiplier = Mathf.Clamp(levelUpMaxManaGainMinMultiplier, 0.05f, 3f);
         levelUpMaxManaGainMaxMultiplier = Mathf.Clamp(levelUpMaxManaGainMaxMultiplier, 0.05f, 3f);
         skillManaCostScale = Mathf.Clamp(skillManaCostScale, 0.35f, 1f);
+        manaRegenBaseConstant = Mathf.Max(0f, manaRegenBaseConstant);
+        manaRegenPerLevel = Mathf.Max(0f, manaRegenPerLevel);
+        manaRegenPerLevelSquared = Mathf.Max(0f, manaRegenPerLevelSquared);
+        manaRegenRampIdleSeconds = Mathf.Max(0f, manaRegenRampIdleSeconds);
+        manaRegenMaxMultiplierAtFullIdle = Mathf.Max(1f, manaRegenMaxMultiplierAtFullIdle);
+        meteorManaCostBase = Mathf.Max(0f, meteorManaCostBase);
+        meteorManaCostPerLevel = Mathf.Max(0f, meteorManaCostPerLevel);
+        meteorExplosionDamagePerLevel = Mathf.Max(0f, meteorExplosionDamagePerLevel);
+        meteorHudDamagePerLevel = Mathf.Max(0f, meteorHudDamagePerLevel);
     }
 }
 
@@ -338,6 +375,36 @@ public static class GameBalanceHelper
 
     public static int BossScoreBonusOnKill => Active != null ? Active.bossScoreBonusOnKill : 500;
 
+    /// <summary>Combat mana/s at <paramref name="playerLevel"/> (before idle ramp and run modifier multiplier).</summary>
+    public static float GetManaRegenerationPerSecond(int playerLevel)
+    {
+        int lv = Mathf.Max(1, playerLevel);
+        float b = Active != null ? Active.manaRegenBaseConstant : 1f;
+        float lin = Active != null ? Active.manaRegenPerLevel : 2.65f;
+        float quad = Active != null ? Active.manaRegenPerLevelSquared : 0.019f;
+        return b + lv * lin + lv * lv * quad;
+    }
+
+    public static float ManaRegenRampIdleSeconds =>
+        Active != null ? Active.manaRegenRampIdleSeconds : 5f;
+
+    public static float ManaRegenMaxMultiplierAtFullIdle =>
+        Active != null ? Mathf.Max(1f, Active.manaRegenMaxMultiplierAtFullIdle) : 2.1f;
+
+    public static float GetMeteorManaCost(int playerLevel)
+    {
+        int lv = Mathf.Max(1, playerLevel);
+        float b = Active != null ? Active.meteorManaCostBase : 40f;
+        float per = Active != null ? Active.meteorManaCostPerLevel : 34f;
+        return (b + lv * per) * SkillManaCostScale;
+    }
+
+    public static float GetMeteorExplosionDamagePerLevel(int playerLevel) =>
+        Mathf.Max(0f, Active != null ? Active.meteorExplosionDamagePerLevel : 130f) * Mathf.Max(1, playerLevel);
+
+    public static float GetMeteorHudDamageDisplay(int playerLevel) =>
+        Mathf.Max(0f, Active != null ? Active.meteorHudDamagePerLevel : 65f) * Mathf.Max(1, playerLevel);
+
     /// <summary>Scales recurring skill <c>manacost</c> values (see individual skills' <c>Update</c>). Default eases mana pressure vs regen.</summary>
     public static float SkillManaCostScale
     {
@@ -382,17 +449,17 @@ public static class GameBalanceHelper
         if (isBoss)
         {
             hp = Active != null ? Active.killRestoreHealthBoss : 35f;
-            mp = Active != null ? Active.killRestoreManaBoss : 20f;
+            mp = Active != null ? Active.killRestoreManaBoss : 24f;
         }
         else if (isGreaterEnemy)
         {
             hp = Active != null ? Active.killRestoreHealthGreater : 10f;
-            mp = Active != null ? Active.killRestoreManaGreater : 6f;
+            mp = Active != null ? Active.killRestoreManaGreater : 8f;
         }
         else
         {
             hp = Active != null ? Active.killRestoreHealthNormal : 4f;
-            mp = Active != null ? Active.killRestoreManaNormal : 3f;
+            mp = Active != null ? Active.killRestoreManaNormal : 4f;
         }
 
         if (hp > 0f)
