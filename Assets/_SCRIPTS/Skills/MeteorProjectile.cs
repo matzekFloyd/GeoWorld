@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using UnityEngine;
 
 public class MeteorProjectile : Meteor {
@@ -109,7 +109,7 @@ public class MeteorProjectile : Meteor {
             Collider[] colliders;
             colliders = Physics.OverlapSphere(pos, range);
 
-            float levelDamageScale = _ownerPlayer.getCurLevel() * 100f;
+            float levelDamageScale = GameBalanceHelper.GetMeteorExplosionDamagePerLevel(_ownerPlayer.getCurLevel());
 
             for (int i = 0; i < colliders.Length; i++)
             {
