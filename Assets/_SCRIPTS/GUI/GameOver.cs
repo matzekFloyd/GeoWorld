@@ -44,6 +44,8 @@ public class GameOver : MonoBehaviour {
     public int bossKillCounter;
     /// <summary>Cumulative bonus score from boss kills (<see cref="GameBalanceHelper.BossScoreBonusOnKill"/> per boss).</summary>
     public int bossBonusScoreTotal;
+    /// <summary>Times the player died this run (includes the fatal death).</summary>
+    public int deathCounter;
 
     public Text gameOverText;
     public Text scoreBoardTextEnemies;
@@ -61,18 +63,26 @@ public class GameOver : MonoBehaviour {
     int _lastEndGameGreaterKills = int.MinValue;
     int _lastEndGameBossKills = int.MinValue;
     int _lastEndGameBossBonusScore = int.MinValue;
+    int _lastEndGameDeaths = int.MinValue;
+
+    RunModifiers _runModifiers;
+    bool _processingPlayerDeath;
 
 
     // Use this for initialization
     void Start () {
         playerDied = false;
         gameTimeIsOver = false;
+        deathCounter = 0;
         GameBalanceHelper.Register(gameBalance);
         timeLeft = GameBalanceHelper.RoundDurationSeconds;
         GameSession.EnsureForScene();
         player = GameObject.FindGameObjectWithTag("Player1");
         if (player != null)
+        {
             m_Player = player.GetComponent<PlayerCharacter>();
+            _runModifiers = player.GetComponent<RunModifiers>();
+        }
         GameSession.Instance?.SyncRunState(playerDied, gameTimeIsOver);
         EnsureBossHudCounter();
         LayoutTopRightHudCounters();
@@ -155,10 +165,8 @@ public class GameOver : MonoBehaviour {
             gameTimeIsOver = true;
         }
 
-        if (m_Player.curHealth <= 0)
-        {
-            playerDied = true;
-        }
+        if (m_Player.curHealth <= 0 && !playerDied && !gameTimeIsOver)
+            TryHandlePlayerDeath();
 
         GameSession.Instance?.SyncRunState(playerDied, gameTimeIsOver);
 
@@ -208,6 +216,22 @@ public class GameOver : MonoBehaviour {
 
     }
 
+    void TryHandlePlayerDeath()
+    {
+        if (_processingPlayerDeath)
+            return;
+        _processingPlayerDeath = true;
+
+        if (_runModifiers == null)
+            _runModifiers = m_Player.GetComponent<RunModifiers>();
+
+        bool respawned = _runModifiers != null && _runModifiers.TryRespawnAfterDeath(this);
+        if (!respawned)
+            playerDied = true;
+
+        _processingPlayerDeath = false;
+    }
+
     bool ShouldRefreshEndGameScoreboard(string title)
     {
         if (!_endGameScoreboardApplied)
@@ -222,6 +246,8 @@ public class GameOver : MonoBehaviour {
             return true;
         if (bossBonusScoreTotal != _lastEndGameBossBonusScore)
             return true;
+        if (deathCounter != _lastEndGameDeaths)
+            return true;
         return false;
     }
 
@@ -233,12 +259,17 @@ public class GameOver : MonoBehaviour {
         _lastEndGameGreaterKills = greaterEnemyKillCounter;
         _lastEndGameBossKills = bossKillCounter;
         _lastEndGameBossBonusScore = bossBonusScoreTotal;
+        _lastEndGameDeaths = deathCounter;
     }
 
     void ApplyEndGameUi(string title)
     {
         if (scoreBoardTextEnemies != null)
+        {
             scoreBoardTextEnemies.text = "Enemies killed: " + enemyKillCounter;
+            if (deathCounter > 0)
+                scoreBoardTextEnemies.text += "   Deaths: " + deathCounter;
+        }
         if (scoreBoardTextGreaterEnemies != null)
             scoreBoardTextGreaterEnemies.text = "Greater Enemies killed: " + greaterEnemyKillCounter;
         EnsureBossScoreboardText();

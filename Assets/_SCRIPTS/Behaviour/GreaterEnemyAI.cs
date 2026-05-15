@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using System.Collections;
 
 public class GreaterEnemyAI : MonoBehaviour {
@@ -339,6 +339,8 @@ public class GreaterEnemyAI : MonoBehaviour {
         var pc = target.GetComponent<PlayerCharacter>();
         pc.AddExp(gainedExp + (boss ? GameBalanceHelper.BossBonusXpFlat : 0f));
         GameBalanceHelper.ApplyKillSustain(pc, boss, ec != null && ec.iAmGreaterEnemy && !boss);
+
+        RunModifiers.Resolve()?.RegisterEnemyDefeated(boss, ec != null && ec.iAmGreaterEnemy && !boss);
 
         GameOver go = target.GetComponent<GameOver>();
         ++go.enemyKillCounter;
