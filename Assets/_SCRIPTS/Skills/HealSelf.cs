@@ -28,7 +28,7 @@ public class HealSelf : SkillBasic {
         healingAmount = 55f + m_Player.getCurLevel() * 110f;
         updateCoolDown();
 
-        if (m_Player.skillAvailable(2))
+        if (m_Player.skillAvailable(GameBalanceHelper.SkillUnlockHeal))
         {
             if (GameInput.SkillHealHeld && requiredMana() && CanUseSkills())
             {

@@ -25,20 +25,31 @@ public sealed class FloatingDamageNumber : MonoBehaviour
 
     public void Show(RectTransform hostRt, Vector3 worldStart, string value, Color color, float duration, float worldRisePerSec, float fontSize)
     {
+        if (_pool == null || hostRt == null)
+            return;
+
         if (_routine != null)
         {
-            if (isActiveAndEnabled)
-                StopCoroutine(_routine);
+            _pool.StopNumberRoutine(_routine);
             _routine = null;
         }
+
         _returned = false;
+        _pool.EnsureDamageNumbersHostActive();
         transform.SetParent(hostRt, false);
         transform.SetAsLastSibling();
         gameObject.SetActive(true);
-        _routine = StartCoroutine(Run(hostRt, worldStart, value, color, duration, worldRisePerSec, fontSize));
+
+        if (!gameObject.activeInHierarchy)
+        {
+            ReturnToPool();
+            return;
+        }
+
+        _routine = _pool.StartNumberRoutine(Run(hostRt, worldStart, value, color, duration, worldRisePerSec, fontSize));
     }
 
-    IEnumerator Run(RectTransform hostRt, Vector3 worldStart, string value, Color color, float duration, float worldRisePerSec, float fontSize)
+    internal IEnumerator Run(RectTransform hostRt, Vector3 worldStart, string value, Color color, float duration, float worldRisePerSec, float fontSize)
     {
         _rt.anchorMin = _rt.anchorMax = new Vector2(0.5f, 0.5f);
         _rt.pivot = new Vector2(0.5f, 0.5f);
@@ -91,6 +102,11 @@ public sealed class FloatingDamageNumber : MonoBehaviour
         }
 
         ReturnToPool();
+    }
+
+    internal void NotifyReturnedToPool()
+    {
+        _routine = null;
     }
 
     void ReturnToPool()

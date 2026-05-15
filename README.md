@@ -22,7 +22,7 @@ _Step-by-step rebinding and the optional `.inputactions` round-trip are under **
 
 ## What the game is
 
-- **Core loop**: Stay alive, kill waves of enemies, level up (up to **50** in current player logic), and survive until the round timer expires—or lose if health hits zero.
+- **Core loop**: Stay alive, kill waves of enemies, level up (up to **100**), and survive until the round timer expires—or lose if health hits zero.
 - **Round rules** (`GameOver`): countdown, spawn targets, greater/boss gates, and boss encounter tuning come from a **`GameBalance`** asset when assigned on **`GameOver`**; if none is assigned, **`GameBalanceHelper`** applies built-in defaults (see **Game Balance asset** under **Tuning & configuration**). Kill UI: **enemies** (all kills), **greater** (non-boss greater only), **bosses defeated** plus optional **boss bonus score**; game over on death or time up.
 - **Fantasy hook**: Earth / “geo” themed skills (projectiles, blast, meteor, time freeze, blood ritual, heal, etc.) against spawned enemies including stronger variants and periodic **boss** spawns tied to level milestones (`EnemyGenerator`), with a telegraphed **boss incoming** moment (HUD banner + tint + optional SFX) before the boss entity appears.
 
@@ -76,9 +76,14 @@ Enemy behaviour lives under `Assets/_SCRIPTS/Behaviour/` (`EnemyAI`, `GreaterEne
 | Round duration | **1200** s |
 | Enemies at player level 1 | **12** (also if asset field ≤ **0**) |
 | Enemies at player level 2 | **28** (also if asset field ≤ **0**) |
-| Enemies per level (level ≥ 3) | **22** (also if asset field ≤ **0**) |
-| Greater enemies / boss gate level | **10** |
-| Boss spawn level multiple | **5** (minimum **1** when asset present) |
+| Max player level | **100** |
+| XP to level (level ≥ 2) | **level² × 48**, soft-capped from level **32** → **52%** at level **100** |
+| Skill unlocks (slots 0–7) | **1, 1, 1, 4, 8, 12, 16, 20** |
+| Enemies per level (level ≥ 3) | **14** (also if asset field ≤ **0**) |
+| Max living enemy cap | **200** |
+| Greater enemies / boss gate level | **12** |
+| Boss spawn level multiple | **10** (minimum **1** when asset present) |
+| Enemy stat soft cap | effective level damped from player level **42** → **38%** growth at **100** |
 | Boss telegraph duration | **2.2** s (if asset value ≤ **0.05** s, uses **2.2** s) |
 | Boss telegraph tint alpha | **0.14** (clamped **0–1** when asset present) |
 | Boss health multiplier | **3** |
@@ -104,7 +109,7 @@ Script: **`Assets/_SCRIPTS/BackgroundMusic.cs`**. Put **`BackgroundMusic`** on t
 
 ### Boss encounters (tuning & behaviour)
 
-- **Cadence** (`EnemyGenerator` + `GameBalance`): a boss is **scheduled** when player level ≥ **`greaterEnemiesMinPlayerLevel`** and **`level % bossSpawnLevelMultiple == 0`** (defaults: first boss at level **10**, then **15**, **20**, …). Only **one living boss** is allowed in `targets` at a time to avoid spam.
+- **Cadence** (`EnemyGenerator` + `GameBalance`): a boss is **scheduled** when player level ≥ **`greaterEnemiesMinPlayerLevel`** and **`level % bossSpawnLevelMultiple == 0`** (defaults: first boss at level **20**, then **30**, **40**, … up to **100**). Only **one living boss** is allowed in `targets` at a time to avoid spam.
 - **Telegraph**: before the prefab spawns, **`GameplayHudView.PlayBossIncomingTelegraph`** shows a banner + purple screen tint for **`bossTelegraphDurationSeconds`** (real time, unscaled). **`GameplaySfx.PlayBossIncoming`** plays optional clip **`bossIncomingStinger`** on the **`GameplaySfx`** component (same object as **`UserInterface`**).
 - **`EnemyCharacter.isBoss` at spawn:** The telegraphed spawn coroutine and **`EnemyGenerator.spawnEndBoss()`** both instantiate (or pool-acquire) **`endBossPrefab`**, then set **`bossChar.isBoss = true`** on the instance’s **`EnemyCharacter`** when that component exists (`Assets/_SCRIPTS/Behaviour/EnemyGenerator.cs`). Anything that counts boss kills, boss score, XP bonuses, or boss-specific VFX/audio keys off **`isBoss`**.
 - **Manual boss prefabs / hand-placed bosses:** Prefabs or scene instances that are **not** spawned through those paths must have **`EnemyCharacter.isBoss`** set correctly in the **prefab** (or at runtime) so behaviour stays consistent with spawned bosses.

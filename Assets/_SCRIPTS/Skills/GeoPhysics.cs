@@ -43,7 +43,7 @@ public class GeoPhysics : SkillBasic {
 
         curPlayerLevel = m_Player.getCurLevel();
 
-        if (m_Player.skillAvailable(1) && curPlayerLevel != _lastAppliedLevel)
+        if (m_Player.skillAvailable(GameBalanceHelper.SkillUnlockGeoPhysics) && curPlayerLevel != _lastAppliedLevel)
             enhanceCharacterStatistics();
     }
 

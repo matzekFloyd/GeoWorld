@@ -11,7 +11,7 @@ public class GeoMania : SkillBasic
     [SerializeField] Color maniaCrosshairFlashColor = new Color(0.78f, 0.14f, 0.12f, 1f);
     [SerializeField] float maniaCelebrateDurationRealtime = 0.22f;
     [SerializeField, Range(0f, 1f)] float maniaCelebrateStrength = 1f;
-    [Tooltip("Extra delay after boss telegraph ends before the crosshair flash (level 10).")]
+    [Tooltip("Extra delay after boss telegraph ends before the crosshair flash (Geo Mania unlock level).")]
     [SerializeField] float maniaCelebrateDelayAfterBossTelegraph = 0.12f;
 
     public Color ManiaCrosshairColor => maniaCrosshairColor;

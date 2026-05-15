@@ -18,10 +18,9 @@ using UnityEngine;
 /// </remarks>
 public class UserInterface : MonoBehaviour
 {
-    const int SkillCount = 8;
+    const int SkillCount = GameBalanceHelper.SkillSlotCount;
     /// <summary>Shown in damage/heal HUD sub-columns when a skill has no meaningful value there (not a minus sign).</summary>
     const string HudNotApplicableStat = "N/A";
-    static readonly int[] SkillMinLevels = { 1, 1, 1, 2, 4, 6, 8, 10 };
 
     private GameObject player;
 
@@ -174,7 +173,7 @@ public class UserInterface : MonoBehaviour
         {
             if (m_GeoMania == null && player != null)
                 m_GeoMania = player.GetComponent<GeoMania>();
-            bool geoMania = m_Player.skillAvailable(10);
+            bool geoMania = m_Player.skillAvailable(GameBalanceHelper.SkillUnlockGeoMania);
             var maniaColor = m_GeoMania != null
                 ? m_GeoMania.ManiaCrosshairColor
                 : new Color(0.65f, 0.12f, 0.12f, 1f);
@@ -217,7 +216,7 @@ public class UserInterface : MonoBehaviour
 
         for (int i = 0; i < SkillCount; i++)
         {
-            if (lv < SkillMinLevels[i])
+            if (lv < GameBalanceHelper.GetSkillUnlockLevel(i))
                 continue;
 
             switch (i)
@@ -259,7 +258,7 @@ public class UserInterface : MonoBehaviour
         int lv = Mathf.RoundToInt(curPlayerLevel);
         for (int i = 0; i < SkillCount; i++)
         {
-            if (lv < SkillMinLevels[i])
+            if (lv < GameBalanceHelper.GetSkillUnlockLevel(i))
             {
                 _skillMana[i] = "";
                 _skillDmg[i] = "";

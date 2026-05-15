@@ -52,6 +52,6 @@ public class SkillBasic : MonoBehaviour {
 
     protected bool geoManiaActivated()
     {
-        return m_Player != null && m_Player.skillAvailable(10);
+        return m_Player != null && m_Player.skillAvailable(GameBalanceHelper.SkillUnlockGeoMania);
     }
 }

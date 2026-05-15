@@ -62,7 +62,7 @@ public class FreezeTime : SkillBasic
         updateCoolDown();
 
 
-        if (m_Player.skillAvailable(8))
+        if (m_Player.skillAvailable(GameBalanceHelper.SkillUnlockFreezeTime))
         {
             if (GameInput.SkillFreezeTimeHeld && requiredMana() && CanUseSkills())
             {
