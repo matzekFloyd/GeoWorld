@@ -33,6 +33,7 @@ public class UserInterface : MonoBehaviour
     private Meteor m_Meteor;
     private BloodRitual m_BloodRitual;
     private FreezeTime m_FreezeTime;
+    private GeoMania m_GeoMania;
 
     private float curPlayerHealth;
     private float maxPlayerHealth;
@@ -110,6 +111,7 @@ public class UserInterface : MonoBehaviour
             m_Meteor = player.GetComponent<Meteor>();
             m_BloodRitual = player.GetComponent<BloodRitual>();
             m_FreezeTime = player.GetComponent<FreezeTime>();
+            m_GeoMania = player.GetComponent<GeoMania>();
         }
         _hud.EnsureBuilt(this);
         var dmgPool = GetComponent<FloatingDamageNumberPool>();
@@ -168,6 +170,16 @@ public class UserInterface : MonoBehaviour
         bool show = session != null && session.IsRunActive;
         if (_minimap != null)
             _minimap.SetGameplayHudVisible(show);
+        if (show)
+        {
+            if (m_GeoMania == null && player != null)
+                m_GeoMania = player.GetComponent<GeoMania>();
+            bool geoMania = m_Player.skillAvailable(10);
+            var maniaColor = m_GeoMania != null
+                ? m_GeoMania.ManiaCrosshairColor
+                : new Color(0.65f, 0.12f, 0.12f, 1f);
+            _hud.SetGeoManiaActive(geoMania, maniaColor);
+        }
         _hud.RefreshGameplay(
             show,
             Mathf.RoundToInt(curPlayerLevel),

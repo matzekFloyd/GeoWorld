@@ -1,46 +1,48 @@
 ﻿using UnityEngine;
-using System.Collections;
 
 public class GeoShot : SkillBasic
 {
-
     public GameObject geoShotProjectile;
     public Transform camPos;
 
     public float geoShotDmg;
 
+    [Header("Projectile tuning")]
+    [SerializeField] float damagePerLevel = 24f;
+    [SerializeField] float baseLaunchImpulse = 10f;
+    [SerializeField] float launchImpulsePerLevel = 0.38f;
+    [SerializeField] float baseLifetimeSeconds = 2.6f;
+    [SerializeField] float lifetimePerLevel = 0.09f;
+    [SerializeField] int baseMaxBounces = 5;
+    [SerializeField] int extraBouncesEveryNLevels = 4;
 
-    // Use this for initialization
+    [Header("Geo Mania (slot 10) bounce bonus")]
+    [SerializeField] int maniaBonusBounces = 7;
+    [SerializeField] float maniaBonusLifetimeSeconds = 2.4f;
+    [SerializeField] float bounceSpeedRetention = 0.9f;
+
     void Start()
     {
         curCooldown = 0;
         maxCooldown = 0.24f;
     }
 
-    // Update is called once per frame
     void Update()
     {
         if (m_Player == null) return;
         int lv = m_Player.getCurLevel();
         manacost = (0.85f + lv * 0.38f) * GameBalanceHelper.SkillManaCostScale;
-        geoShotDmg = lv * 18f;
+        geoShotDmg = GetDamageForLevel(lv);
         updateCoolDown();
-        
+
         if (GameInput.FirePrimaryHeld && requiredMana() && CanUseSkills())
         {
             if (curCooldown == 0)
             {
-                if (geoManiaActivated())
-                {
-                    geoManiaShoot();
-                    curCooldown = maxCooldown;
-                }
                 shoot();
                 curCooldown = maxCooldown;
             }
-
         }
-
     }
 
     public void shoot()
@@ -48,32 +50,50 @@ public class GeoShot : SkillBasic
         m_Player.changeCurrentMana(-manacost);
         GameplaySfx.Instance?.PlayGeoShotCast();
 
+        int lv = m_Player.getCurLevel();
+        bool mania = geoManiaActivated();
+        float impulse = GetLaunchImpulse(lv);
+        var spawnPos = camPos.position + camPos.forward * 5f;
+        var rot = camPos.rotation;
+
         var pools = GeoWorldObjectPools.Instance;
         GameObject shot = pools != null
-            ? pools.Acquire(geoShotProjectile, camPos.position + camPos.forward * 5, camPos.rotation, null)
-            : Instantiate(geoShotProjectile, camPos.position + camPos.forward * 5, camPos.rotation);
+            ? pools.Acquire(geoShotProjectile, spawnPos, rot, null)
+            : Instantiate(geoShotProjectile, spawnPos, rot);
+
         GeoWorldObjectPools.ApplyProjectileGravityIfApplicable(shot);
-        shot.GetComponent<Rigidbody>().AddForce(camPos.forward * 10, ForceMode.Impulse);
+
+        var rb = shot.GetComponent<Rigidbody>();
+        if (rb != null)
+            rb.AddForce(camPos.forward * impulse, ForceMode.Impulse);
+
+        var projectile = shot.GetComponent<GeoShotProjectile>();
+        if (projectile != null)
+            projectile.Configure(this, lv, mania);
     }
 
-    public void geoManiaShoot()
+    public float GetDamageForLevel(int level) => Mathf.Max(1, level) * damagePerLevel;
+
+    public float GetLaunchImpulse(int level) =>
+        baseLaunchImpulse + Mathf.Max(1, level) * launchImpulsePerLevel;
+
+    public float GetLifetimeSeconds(int level, bool mania)
     {
-        int randomValue = Random.Range(1, 5);
-        m_Player.changeCurrentMana(-manacost);
-
-        var pools = GeoWorldObjectPools.Instance;
-        for(int i = 0; i <= randomValue; i++)
-        {
-            GameObject shot = pools != null
-                ? pools.Acquire(geoShotProjectile, camPos.position + camPos.forward * 5 * 5 * i, camPos.rotation, null)
-                : Instantiate(geoShotProjectile, camPos.position + camPos.forward * 5 * 5 * i, camPos.rotation);
-            GeoWorldObjectPools.ApplyProjectileGravityIfApplicable(shot);
-            shot.GetComponent<Rigidbody>().AddForce(camPos.forward * 10f, ForceMode.Impulse);
-        }
+        float t = baseLifetimeSeconds + Mathf.Max(1, level) * lifetimePerLevel;
+        if (mania)
+            t += maniaBonusLifetimeSeconds;
+        return t;
     }
 
-    public float getGeoShotDmg()
+    public int GetMaxBounces(int level, bool mania)
     {
-        return geoShotDmg;
+        int b = baseMaxBounces + Mathf.Max(0, level / Mathf.Max(1, extraBouncesEveryNLevels));
+        if (mania)
+            b += maniaBonusBounces;
+        return b;
     }
+
+    public float BounceSpeedRetention => bounceSpeedRetention;
+
+    public float getGeoShotDmg() => geoShotDmg;
 }
