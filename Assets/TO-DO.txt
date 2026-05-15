@@ -1,0 +1,170 @@
+GeoWorld — local backlog / branch notes
+======================================
+GitHub issues are the source of truth for polish and features. This file is for
+quick pickup on active branches (especially work-in-progress not yet closed on GitHub).
+
+Index: https://github.com/matzekFloyd/GeoWorld/issues
+Migration table: issue #53 · QoL epic: #43
+
+
+================================================================================
+CUBE WORLD — GitHub #107 (feat: cube world — replace flat terrain play space)
+Branch pickup doc — last updated: 2026-05-15
+================================================================================
+
+SUMMARY
+  Replace the flat-plane mental model with a cube play space: gravity/movement on
+  faces, enemies on the same surface, minimap TBD, no silent void falls.
+
+  Today the game is still world +Y up. Standard Assets FirstPersonController uses
+  Vector3.down / Physics.gravity. Enemies use transform.forward (no NavMesh).
+  MinimapRadar projects XZ only (EnemyGenerator.TryGetArenaBoundsXZ).
+
+
+--------------------------------------------------------------------------------
+PHASE 1 — Prototype cube mesh + top-face play (MVP)          STATUS: ~mostly done
+--------------------------------------------------------------------------------
+
+INTENT (Phase 1)
+  Visible cube under the arena; gameplay stays on terrain (+Y gravity). One
+  playable “top face” only — no multi-face gravity yet.
+
+WHAT EXISTS IN CODE (this branch)
+  [x] Assets/Editor/GeoWorldCubeWorldSetup.cs
+        Menu: GeoWorld → World →
+          · Apply Cube World (Phase 1)
+          · Refit Cube To Terrain
+          · Restore Terrain (visual only)
+        Batch: -executeMethod GeoWorldCubeWorldSetup.ApplyCubeWorldBatchAndQuit
+  [x] Assets/_SCRIPTS/World/CubeWorldAnchor.cs
+        Play footprint (center, halfWidth/Depth, topFaceWorldY), ContainsXZ()
+  [x] Assets/_SCRIPTS/World/ArenaEdgeKillZone.cs
+        Legacy stub (OnTriggerEnter empty); setup REMOVES these, does not recreate
+
+WHAT APPLY (Phase 1) DOES
+  · Sizes CubeWorld root to terrain footprint; builds GeoCubeVisual + CubePhysics
+  · Aligns terrain base on cube top (cube top slightly below terrain to avoid z-fight)
+  · Snaps spawn points + player Y to terrain height
+  · Re-wires EnemyGenerator spawn arrays from scene objects
+  · Disables legacy "Invisible Wall*" objects
+  · Clears EdgeWalls / EdgeKillZones children if present; destroys ArenaEdgeKillZone
+
+PHASE 1 — STILL TODO / VERIFY ON THIS BRANCH
+  [ ] Run in Editor once if scene not saved yet:
+        GeoWorld → World → Apply Cube World (Phase 1)
+      Then commit GeoWorldMain.unity with CubeWorld root in hierarchy.
+  [ ] Confirm in Play: walk terrain hills, see cube pedestal below, spawns work.
+  [ ] Edge containment + void rule (#107 AC) — NOT DONE:
+        RepositionOrCreateEdgeContainment currently only REMOVES kill zones.
+        Need either:
+          - ArenaEdgeKillZone triggers → respawn (RunModifiers.PerformRespawn) or
+            life loss, wired to CubeWorldAnchor bounds, OR
+          - Physical EdgeWalls colliders on footprint perimeter
+  [ ] Cube art: GeoCubeVisual still Default-Material; optional _Earth textures / shader
+  [ ] Document in README “Tuning” if defaults change (CONTRIBUTING)
+
+PHASE 1 — EXPLICITLY NOT IN SCOPE (deferred to Phase 3+)
+  · Per-face gravity / walking on cube sides
+  · Replacing terrain collider with flat cube-top collider
+  · Minimap on cube manifold
+  · Enemy surface alignment
+
+
+--------------------------------------------------------------------------------
+PHASE 2 — Migrate spawn points / bounds                         STATUS: not started
+--------------------------------------------------------------------------------
+
+  [ ] Per-face or anchor-based spawn layout (data on CubeWorldAnchor or ScriptableObject)
+  [ ] EnemyGenerator.TryGetArenaBoundsXZ → use CubeWorldAnchor when present
+  [ ] Retune GameBalance spawn counts if playable area shrinks
+  [ ] Hunt ranges in EnemyAI (128–440+) — retest on footprint size
+
+
+--------------------------------------------------------------------------------
+PHASE 3 — Multi-face gravity + movement                        STATUS: not started
+--------------------------------------------------------------------------------
+
+  New subsystem (suggested): Assets/_SCRIPTS/World/ surface gravity / cube locomotion
+
+  [ ] Surface normal as player up (raycast / contact)
+  [ ] Wrap or fork FirstPersonController + MouseLook (Standard Assets — avoid drive-by)
+  [ ] GeoPhysics: gravity direction, not just m_GravityMultiplier
+  [ ] Projectiles: GeoWorldObjectPools.ApplyProjectileGravityIfApplicable (world gravity today)
+  [ ] Edge / face transitions (slerp orientation, camera)
+  [ ] Audit Vector3.up / Vector3.down in _SCRIPTS (FloatingDamageNumber, VFX, etc.)
+
+
+--------------------------------------------------------------------------------
+PHASE 4 — Enemies on the manifold                              STATUS: not started
+--------------------------------------------------------------------------------
+
+  [ ] Align enemy rotation to surface normal (snap each frame or parent to face)
+  [ ] GreaterEnemyAI / HomingMissileAI — tangent-plane movement
+  [ ] Boss spawns on valid surface points
+  [ ] Performance pass at current enemy counts (likely OK; profile after Phase 3)
+
+
+--------------------------------------------------------------------------------
+PHASE 5 — Art pass + retire flat terrain                         STATUS: not started
+--------------------------------------------------------------------------------
+
+  [ ] Skybox / horizon / cube edge treatment
+  [ ] Optional reuse: Assets/_ASSETS/_Earth (materials only — not EarthScript gameplay)
+  [ ] Replace or remove Geomania_Terrain for non-hill cube face (design choice)
+  [ ] Remove terrain-only dependencies from GeoWorldCubeWorldSetup when ready
+
+
+--------------------------------------------------------------------------------
+FOLLOW-UP ISSUE (acceptable per #107 acceptance criteria)
+--------------------------------------------------------------------------------
+
+  [ ] Minimap / radar on cube world (#107 — link new issue when opened)
+        MinimapRadar.cs is XZ-only; player needle zeroes fwd.y
+
+
+--------------------------------------------------------------------------------
+#107 ACCEPTANCE CRITERIA — TRACKING
+--------------------------------------------------------------------------------
+
+  | Criterion                              | Phase 1 (now)     | Later      |
+  |----------------------------------------|-------------------|------------|
+  | Walk cube faces, correct up-vector     | No (terrain +Y)   | Phase 3    |
+  | Enemies on same manifold               | Terrain only      | Phase 4    |
+  | Minimap updated or follow-up           | Unchanged         | Follow-up  |
+  | No void without respawn rules          | NOT MET (gaps)    | Phase 1b   |
+  | Performance at current enemy counts    | Verify in Play    | Phase 4    |
+
+
+--------------------------------------------------------------------------------
+KEY FILES (quick navigation)
+--------------------------------------------------------------------------------
+
+  Editor setup .......... Assets/Editor/GeoWorldCubeWorldSetup.cs
+  Bounds ................ Assets/_SCRIPTS/World/CubeWorldAnchor.cs
+  Edge kill (stub) ...... Assets/_SCRIPTS/World/ArenaEdgeKillZone.cs
+  Scene ................. Assets/_SCENES/GeoWorldMain.unity
+  Terrain assets ........ Assets/_TERRAIN/
+  Player movement ....... Assets/Standard Assets/.../FirstPersonController.cs
+  Enemies ............... Assets/_SCRIPTS/Behaviour/EnemyGenerator.cs, EnemyAI.cs
+  Minimap ............... Assets/_SCRIPTS/GUI/MinimapRadar.cs
+  Respawn ............... Assets/_SCRIPTS/Characters/RunModifiers.cs
+
+
+--------------------------------------------------------------------------------
+NEXT SESSION — suggested order
+--------------------------------------------------------------------------------
+
+  1. Open GeoWorldMain → GeoWorld → World → Apply Cube World (Phase 1) → save scene
+  2. Playtest: movement, spawns, boss flow, WebGL if you ship browser builds
+  3. Implement edge kill OR walls (finish #107 “no void” for top-face MVP)
+  4. Close Phase 1 on #107 comment; open sub-issue for minimap if needed
+  5. Only then start Phase 3 design (six-face gravity is a large fork)
+
+
+================================================================================
+OTHER BACKLOG
+================================================================================
+
+See GitHub issues / #53 migration table. Add short branch notes below as needed:
+
+
