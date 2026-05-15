@@ -73,7 +73,7 @@ Enemy behaviour lives under `Assets/_SCRIPTS/Behaviour/` (`EnemyAI`, `GreaterEne
 
 | Area | Fallback when `Active == null` (or invalid field) |
 |------|---------------------------------------------------|
-| Round duration | **900** s |
+| Round duration | **1200** s |
 | Enemies at player level 1 | **12** (also if asset field ≤ **0**) |
 | Enemies at player level 2 | **28** (also if asset field ≤ **0**) |
 | Enemies per level (level ≥ 3) | **22** (also if asset field ≤ **0**) |

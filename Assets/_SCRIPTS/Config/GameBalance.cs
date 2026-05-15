@@ -10,7 +10,7 @@ public class GameBalance : ScriptableObject
 {
     [Header("Round")]
     [Tooltip("Countdown in seconds until GeoWorld win condition.")]
-    public float roundDurationSeconds = 900f;
+    public float roundDurationSeconds = 1200f;
 
     [Header("Spawning")]
     [Tooltip("Desired living normal enemies at player level 1 (intro).")]
@@ -124,7 +124,7 @@ public static class GameBalanceHelper
         Active = balance;
     }
 
-    public static float RoundDurationSeconds => Active != null ? Active.roundDurationSeconds : 900f;
+    public static float RoundDurationSeconds => Active != null ? Active.roundDurationSeconds : 1200f;
 
     /// <summary>Target living count at player level 1. Values ≤ 0 fall back to 12 so older assets never request zero.</summary>
     public static int EnemiesAtPlayerLevel1
