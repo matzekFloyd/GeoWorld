@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using System.Collections;
 
 public class GeoBlast : SkillBasic
@@ -72,6 +72,6 @@ public class GeoBlast : SkillBasic
 
     public float getGeoBlastDmg()
     {
-        return geoBlastDmg;
+        return m_Player != null ? m_Player.ScaleOutgoingDamage(geoBlastDmg) : geoBlastDmg;
     }
 }

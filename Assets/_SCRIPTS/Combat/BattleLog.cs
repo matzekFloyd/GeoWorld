@@ -6,8 +6,8 @@ using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
 /// <summary>
-/// Bounded read-only combat feed (bottom-right HUD). Append from <see cref="CombatFeedback"/> and central
-/// death hooks — extend by adding a method here, not by calling uGUI directly from gameplay scripts.
+/// Bounded read-only combat feed (bottom-right HUD). Append from <see cref="CombatFeedback"/>,
+/// <see cref="RunModifiers"/>, and central death hooks — extend by adding a method here, not by calling uGUI directly from gameplay scripts.
 /// Toggle visibility with <b>L</b> (same session as minimap <b>M</b>); preference key <see cref="VisiblePlayerPrefsKey"/>.
 /// </summary>
 public static class BattleLog
@@ -164,6 +164,62 @@ public static class BattleLog
             return;
         AppendLine(line.Trim());
     }
+
+    public static void AppendRunMalusGained(float deltaPercent, float totalMalusPercent, string reason)
+    {
+        if (!UserWantsVisible || deltaPercent <= 0.001f)
+            return;
+        string detail = string.IsNullOrEmpty(reason) ? "" : $" ({reason})";
+        AppendLine($"+{FmtPct(deltaPercent)} malus{detail}. Total malus: {FmtPct(totalMalusPercent)}.");
+    }
+
+    public static void AppendRunMalusRecovered(float deltaPercent, float totalMalusPercent)
+    {
+        if (!UserWantsVisible || deltaPercent <= 0.001f)
+            return;
+        AppendLine($"−{FmtPct(deltaPercent)} malus. Total malus: {FmtPct(totalMalusPercent)}.");
+    }
+
+    public static void AppendRunBonusGained(float deltaPercent, float totalBonusPercent, string reason)
+    {
+        if (!UserWantsVisible || deltaPercent <= 0.001f)
+            return;
+        string detail = string.IsNullOrEmpty(reason) ? "" : $" ({reason})";
+        AppendLine($"+{FmtPct(deltaPercent)} bonus{detail}. Total bonus: {FmtPct(totalBonusPercent)}.");
+    }
+
+    public static void AppendRunBonusLost(float lostPercent, string reason)
+    {
+        if (!UserWantsVisible || lostPercent <= 0.001f)
+            return;
+        string detail = string.IsNullOrEmpty(reason) ? "" : $" ({reason})";
+        AppendLine($"−{FmtPct(lostPercent)} bonus{detail}.");
+    }
+
+    public static void AppendLifeLost(int livesRemaining)
+    {
+        if (!UserWantsVisible)
+            return;
+        if (livesRemaining <= 0)
+            AppendLine("Life lost. No lives remaining.");
+        else if (livesRemaining == 1)
+            AppendLine("Life lost. 1 life remaining.");
+        else
+            AppendLine($"Life lost. {livesRemaining} lives remaining.");
+    }
+
+    public static void AppendPlayerLevelUp(int newLevel, int maxLevel)
+    {
+        if (!UserWantsVisible)
+            return;
+        if (newLevel >= maxLevel)
+            AppendLine($"Level up! Reached max level {newLevel}.");
+        else
+            AppendLine($"Level up! You are now level {newLevel}.");
+    }
+
+    static string FmtPct(float percent) =>
+        Mathf.RoundToInt(percent).ToString(CultureInfo.InvariantCulture) + "%";
 
     static bool ShouldLogLightEnemyHitNow(Transform enemyRoot)
     {

@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Serialization;
 
 /// <summary>
 /// Central tuning data. Create via Assets → Create → GeoWorld → Game Balance,
@@ -37,6 +38,32 @@ public class GameBalance : ScriptableObject
 
     [Tooltip("Unlock levels: GeoShot, GeoBlast, GeoPhysics, Heal, Meteor, Blood Ritual, Freeze Time, Geo Mania.")]
     public int[] skillUnlockLevels = { 1, 1, 1, 4, 8, 12, 16, 20 };
+
+    [Header("Lives & run modifiers (#103)")]
+    [Tooltip("Respawns allowed before final death (2 = up to 2 deaths with respawn, 3rd death ends the run).")]
+    public int maxRespawnsPerRun = 2;
+
+    [Tooltip("Max HP / mana / outgoing damage malus added per death while no boss bonus is active.")]
+    public float deathMalusPercentPerDeath = 15f;
+
+    [Tooltip("Malus added on death when a boss bonus was active (bonus is cleared; half of deathMalusPercentPerDeath).")]
+    public float deathMalusPercentWhenBonusActive = 7.5f;
+
+    [Tooltip("Normal kills at player level 1 to remove one malusRecoveryPercentPerTick.")]
+    [FormerlySerializedAs("normalKillsPerMalusRecoveryPercent")]
+    public int normalKillsPerMalusRecoveryAtLevel1 = 2;
+
+    [Tooltip("Extra normal kills required per player level above 1 (level 50 with 0.1 → ~7 kills per 1% malus).")]
+    public float extraNormalKillsPerMalusRecoveryPerLevel = 0.1f;
+
+    [Tooltip("Malus removed per recovery tick (see normalKillsPerMalusRecoveryAtLevel1).")]
+    public float malusRecoveryPercentPerTick = 1f;
+
+    [Tooltip("Boss kill bonus to HP, mana, and damage; stacks on multiple bosses.")]
+    public float bossKillBonusPercent = 15f;
+
+    [Tooltip("HP / mana / damage bonus per full minute survived (stacks; not cleared on respawn).")]
+    public float timeBonusPercentPerMinute = 2f;
 
     [Header("Enemy combat scaling (late game)")]
     [Tooltip("Above this player level, enemy HP/XP use a damped effective level so level 50–100 is not instant death.")]
@@ -186,6 +213,29 @@ public static class GameBalanceHelper
 
     /// <summary>Enemy crits vs the player unlock when Geo Mania unlocks (same cadence as overheal).</summary>
     public static int EnemyCritMinPlayerLevel => SkillUnlockGeoMania;
+
+    public static int MaxRespawnsPerRun => Active != null ? Mathf.Max(0, Active.maxRespawnsPerRun) : 2;
+
+    public static float DeathMalusPercentPerDeath => Active != null ? Active.deathMalusPercentPerDeath : 15f;
+
+    public static float DeathMalusPercentWhenBonusActive =>
+        Active != null ? Active.deathMalusPercentWhenBonusActive : 7.5f;
+
+    public static float MalusRecoveryPercentPerTick =>
+        Active != null ? Active.malusRecoveryPercentPerTick : 1f;
+
+    public static float BossKillBonusPercent => Active != null ? Active.bossKillBonusPercent : 15f;
+
+    public static float TimeBonusPercentPerMinute => Active != null ? Active.timeBonusPercentPerMinute : 2f;
+
+    /// <summary>Normal enemy kills needed to remove one <see cref="MalusRecoveryPercentPerTick"/> at the given player level.</summary>
+    public static int GetNormalKillsRequiredForMalusRecovery(int playerLevel)
+    {
+        int level = Mathf.Max(1, playerLevel);
+        int baseKills = Active != null ? Mathf.Max(1, Active.normalKillsPerMalusRecoveryAtLevel1) : 2;
+        float extraPerLevel = Active != null ? Active.extraNormalKillsPerMalusRecoveryPerLevel : 0.1f;
+        return Mathf.Max(1, Mathf.RoundToInt(baseKills + (level - 1) * extraPerLevel));
+    }
 
     public static int GetSkillUnlockLevel(int skillIndex)
     {

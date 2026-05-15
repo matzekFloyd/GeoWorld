@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using UnityEngine;
 
 public class MeteorProjectile : Meteor {
@@ -120,6 +120,8 @@ public class MeteorProjectile : Meteor {
                     float distanceMultiplier = distanceRatio * 0.75f + 0.25f;
 
                     float dmg = levelDamageScale * distanceMultiplier;
+                    if (_ownerPlayer != null)
+                        dmg = _ownerPlayer.ScaleOutgoingDamage(dmg);
                     bool crit = _ownerPlayer != null && _ownerMeteor != null &&
                         PlayerCritHelper.TryApplyGeoManiaCrit(_ownerPlayer, ref dmg, _ownerMeteor.manacost, _ownerMeteor.maxCooldown);
 

@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 
 public class GeoShot : SkillBasic
 {
@@ -95,5 +95,5 @@ public class GeoShot : SkillBasic
 
     public float BounceSpeedRetention => bounceSpeedRetention;
 
-    public float getGeoShotDmg() => geoShotDmg;
+    public float getGeoShotDmg() => m_Player != null ? m_Player.ScaleOutgoingDamage(geoShotDmg) : geoShotDmg;
 }

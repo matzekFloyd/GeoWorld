@@ -33,6 +33,19 @@ public sealed class GameplayHudView : MonoBehaviour
     Canvas _canvas;
     Text _classTitleText;
     Text _levelText;
+    Image _modifierLeftFill;
+    Image _modifierRightFill;
+    Text _runModifierHudText;
+    Image[] _livesHearts;
+    int _lastLivesHeartFill = -1;
+    float _lastModifierNet = float.NaN;
+    const float LivesHeartSize = 24f;
+    static readonly Color LivesHeartFull = new Color(0.95f, 0.28f, 0.32f, 1f);
+    static readonly Color LivesHeartEmpty = new Color(0.42f, 0.42f, 0.48f, 0.4f);
+    const float ModifierBarMaxSidePercent = 100f;
+    static readonly Color ModifierMalusFill = new Color(0.92f, 0.28f, 0.22f, 1f);
+    static readonly Color ModifierBonusFill = new Color(0.35f, 0.88f, 0.42f, 1f);
+    static readonly Color ModifierCenterMark = new Color(0.92f, 0.92f, 0.92f, 0.95f);
     Image _healthFill;
     Text _healthValueText;
     Image _manaFill;
@@ -89,6 +102,7 @@ public sealed class GameplayHudView : MonoBehaviour
 
     static readonly Dictionary<Texture2D, Sprite> SpriteCache = new Dictionary<Texture2D, Sprite>();
     static Sprite _solidWhiteSprite;
+    static Sprite _heartSprite;
 
     SkillColumn[] _columns;
     RectTransform _skillsRowRt;
@@ -184,7 +198,9 @@ public sealed class GameplayHudView : MonoBehaviour
 
         BuildTopLeftPanel(canvasRt, barW, out _classTitleText, out _levelText,
             out _healthFill, out _healthValueText, out _manaFill, out _manaValueText,
-            out _expFill, out _expValueText);
+            out _expFill, out _expValueText,
+            out _modifierLeftFill, out _modifierRightFill, out _runModifierHudText,
+            out _livesHearts);
 
         _columns = BuildSkillColumns(canvasRt, source, barW);
 
@@ -238,6 +254,7 @@ public sealed class GameplayHudView : MonoBehaviour
             _crosshairRecentHeal.gameObject.SetActive(false);
         _lastHealthTxt = _lastManaTxt = _lastExpTxt = null;
         _lastHealthFill = _lastManaFill = _lastExpFill = -1f;
+        _lastLivesHeartFill = -1;
         _lastHealthOverhealTint = -1;
         _lastManaOvermanaTint = -1;
 
@@ -969,6 +986,8 @@ public sealed class GameplayHudView : MonoBehaviour
                 _levelText.text = "Level " + curLevel;
         }
 
+        RefreshRunModifierAndLivesHud();
+
         string hpTxt = (int)curHealth + "/" + (int)maxHealth;
         if (hpTxt != _lastHealthTxt && _healthValueText != null)
         {
@@ -1405,11 +1424,73 @@ public sealed class GameplayHudView : MonoBehaviour
             dt);
     }
 
+    void RefreshRunModifierAndLivesHud()
+    {
+        var rm = RunModifiers.Resolve();
+        RefreshLivesHearts(rm);
+
+        float malus = rm != null ? rm.MalusPercent : 0f;
+        float bonus = rm != null ? rm.BonusPercent : 0f;
+        float net = bonus - malus;
+        if (Mathf.Abs(net - _lastModifierNet) < 0.05f && !float.IsNaN(_lastModifierNet))
+            return;
+        _lastModifierNet = net;
+
+        float leftHalf = 0.5f * Mathf.Clamp01(malus / ModifierBarMaxSidePercent);
+        float rightHalf = 0.5f * Mathf.Clamp01(bonus / ModifierBarMaxSidePercent);
+        SetModifierBarSideFill(_modifierLeftFill, 0.5f - leftHalf, 0.5f);
+        SetModifierBarSideFill(_modifierRightFill, 0.5f, 0.5f + rightHalf);
+
+        if (_runModifierHudText != null)
+        {
+            _runModifierHudText.text = rm != null ? rm.GetNetModifierHudLabel() : "0%";
+            _runModifierHudText.color = Color.white;
+        }
+    }
+
+    void RefreshLivesHearts(RunModifiers rm)
+    {
+        if (_livesHearts == null || _livesHearts.Length == 0)
+            return;
+
+        int lives = rm != null ? rm.RespawnsRemaining + 1 : GameBalanceHelper.MaxRespawnsPerRun + 1;
+        lives = Mathf.Clamp(lives, 0, _livesHearts.Length);
+        if (lives == _lastLivesHeartFill)
+            return;
+        _lastLivesHeartFill = lives;
+
+        for (int i = 0; i < _livesHearts.Length; i++)
+        {
+            var heart = _livesHearts[i];
+            if (heart == null)
+                continue;
+            bool filled = i < lives;
+            heart.color = filled ? LivesHeartFull : LivesHeartEmpty;
+        }
+    }
+
+    static void SetModifierBarSideFill(Image fill, float anchorMinX, float anchorMaxX)
+    {
+        if (fill == null)
+            return;
+        bool visible = anchorMaxX - anchorMinX > 0.0005f;
+        fill.enabled = visible;
+        if (!visible)
+            return;
+        var rt = fill.rectTransform;
+        rt.anchorMin = new Vector2(anchorMinX, 0f);
+        rt.anchorMax = new Vector2(anchorMaxX, 1f);
+        rt.offsetMin = Vector2.zero;
+        rt.offsetMax = Vector2.zero;
+    }
+
     static void BuildTopLeftPanel(RectTransform canvas, float barWidth,
         out Text classText, out Text levelText,
         out Image healthFill, out Text healthVal,
         out Image manaFill, out Text manaVal,
-        out Image expFill, out Text expVal)
+        out Image expFill, out Text expVal,
+        out Image modifierLeftFill, out Image modifierRightFill, out Text modifierValueText,
+        out Image[] livesHearts)
     {
         var panel = CreateUIObject("TopLeft", canvas);
         var rt = panel.GetComponent<RectTransform>();
@@ -1417,7 +1498,7 @@ public sealed class GameplayHudView : MonoBehaviour
         rt.anchorMax = new Vector2(0f, 1f);
         rt.pivot = new Vector2(0f, 1f);
         rt.anchoredPosition = new Vector2(14f, -14f);
-        rt.sizeDelta = new Vector2(barWidth + 132f, 216f);
+        rt.sizeDelta = new Vector2(barWidth + 132f, 276f);
 
         var v = panel.AddComponent<VerticalLayoutGroup>();
         v.childAlignment = TextAnchor.UpperLeft;
@@ -1436,9 +1517,145 @@ public sealed class GameplayHudView : MonoBehaviour
         var leL = levelText.gameObject.AddComponent<LayoutElement>();
         leL.flexibleWidth = 1f;
 
+        CreateModifierBarRow(panel.transform, barWidth, out modifierLeftFill, out modifierRightFill, out modifierValueText);
+
         healthFill = CreateBarRow(panel.transform, "Health", "Health:", barWidth, new Color(0.85f, 0.2f, 0.2f), out healthVal);
         manaFill = CreateBarRow(panel.transform, "Mana", "Mana:", barWidth, new Color(0.25f, 0.45f, 0.95f), out manaVal);
         expFill = CreateBarRow(panel.transform, "Experience", "Experience:", barWidth, new Color(0.35f, 0.8f, 0.35f), out expVal);
+
+        BuildLivesHeartsRow(panel.transform, barWidth, out livesHearts);
+    }
+
+    static void BuildLivesHeartsRow(Transform parent, float barWidth, out Image[] hearts)
+    {
+        int maxLives = Mathf.Max(1, GameBalanceHelper.MaxRespawnsPerRun + 1);
+        var row = CreateUIObject("LivesRow", parent);
+        var h = row.AddComponent<HorizontalLayoutGroup>();
+        h.childAlignment = TextAnchor.MiddleLeft;
+        h.spacing = 8f;
+        h.childForceExpandWidth = false;
+        h.childForceExpandHeight = false;
+        var leRow = row.AddComponent<LayoutElement>();
+        leRow.preferredHeight = LivesHeartSize + 2f;
+
+        var lbl = CreateText(row.transform, "Lives:", 20, TextAnchor.MiddleLeft, FontStyle.Normal);
+        var leLbl = lbl.gameObject.AddComponent<LayoutElement>();
+        leLbl.preferredWidth = 118f;
+
+        var heartsHost = CreateUIObject("LivesHearts", row.transform);
+        var leHost = heartsHost.AddComponent<LayoutElement>();
+        leHost.preferredWidth = barWidth;
+        leHost.preferredHeight = LivesHeartSize;
+
+        var heartsLayout = heartsHost.AddComponent<HorizontalLayoutGroup>();
+        heartsLayout.childAlignment = TextAnchor.MiddleLeft;
+        heartsLayout.spacing = 5f;
+        heartsLayout.childForceExpandWidth = false;
+        heartsLayout.childForceExpandHeight = false;
+
+        var sprite = GetHeartSprite();
+        hearts = new Image[maxLives];
+        for (int i = 0; i < maxLives; i++)
+        {
+            var heartGo = CreateUIObject($"Heart{i + 1}", heartsHost.transform);
+            var le = heartGo.AddComponent<LayoutElement>();
+            le.preferredWidth = LivesHeartSize;
+            le.preferredHeight = LivesHeartSize;
+            var img = heartGo.AddComponent<Image>();
+            img.sprite = sprite;
+            img.preserveAspect = true;
+            img.raycastTarget = false;
+            img.color = LivesHeartFull;
+            hearts[i] = img;
+        }
+    }
+
+    static Sprite GetHeartSprite()
+    {
+        if (_heartSprite != null)
+            return _heartSprite;
+
+        const int size = 32;
+        var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
+        var pixels = new Color[size * size];
+        float cx = size * 0.5f;
+        float cy = size * 0.42f;
+        float scale = size * 0.46f;
+        for (int y = 0; y < size; y++)
+        {
+            for (int x = 0; x < size; x++)
+            {
+                float nx = (x - cx) / scale;
+                float ny = (y - cy) / scale;
+                float a = nx * nx + ny * ny - 1f;
+                bool inside = a * a * a - nx * nx * ny * ny * ny <= 0.02f;
+                pixels[y * size + x] = inside ? Color.white : Color.clear;
+            }
+        }
+
+        tex.SetPixels(pixels);
+        tex.Apply();
+        tex.filterMode = FilterMode.Bilinear;
+        tex.wrapMode = TextureWrapMode.Clamp;
+        _heartSprite = Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), 100f);
+        return _heartSprite;
+    }
+
+    static void CreateModifierBarRow(Transform parent, float barWidth,
+        out Image leftFill, out Image rightFill, out Text valueText)
+    {
+        var row = CreateUIObject("ModifierRow", parent);
+        var h = row.AddComponent<HorizontalLayoutGroup>();
+        h.childAlignment = TextAnchor.MiddleLeft;
+        h.spacing = 8f;
+
+        var lbl = CreateText(row.transform, "Modifier:", 20, TextAnchor.MiddleLeft, FontStyle.Normal);
+        var leLbl = lbl.gameObject.AddComponent<LayoutElement>();
+        leLbl.preferredWidth = 118f;
+
+        var barHost = CreateUIObject("ModifierBarHost", row.transform);
+        var leBar = barHost.AddComponent<LayoutElement>();
+        leBar.preferredWidth = barWidth;
+        leBar.preferredHeight = 22f;
+
+        var bg = CreateUIObject("Bg", barHost.transform);
+        var bgRt = bg.GetComponent<RectTransform>();
+        StretchFull(bgRt);
+        var bgImg = bg.AddComponent<Image>();
+        bgImg.color = new Color(0.12f, 0.12f, 0.14f, 0.75f);
+
+        var centerMark = CreateUIObject("Center", barHost.transform);
+        var cmRt = centerMark.GetComponent<RectTransform>();
+        cmRt.anchorMin = new Vector2(0.5f, 0f);
+        cmRt.anchorMax = new Vector2(0.5f, 1f);
+        cmRt.pivot = new Vector2(0.5f, 0.5f);
+        cmRt.sizeDelta = new Vector2(2f, 0f);
+        cmRt.anchoredPosition = Vector2.zero;
+        var cmImg = centerMark.AddComponent<Image>();
+        cmImg.sprite = GetSolidWhiteSprite();
+        cmImg.color = ModifierCenterMark;
+        cmImg.raycastTarget = false;
+
+        var leftGo = CreateUIObject("MalusFill", barHost.transform);
+        leftFill = leftGo.AddComponent<Image>();
+        leftFill.sprite = GetSolidWhiteSprite();
+        leftFill.color = ModifierMalusFill;
+        leftFill.raycastTarget = false;
+        SetModifierBarSideFill(leftFill, 0.5f, 0.5f);
+        leftFill.enabled = false;
+
+        var rightGo = CreateUIObject("BonusFill", barHost.transform);
+        rightFill = rightGo.AddComponent<Image>();
+        rightFill.sprite = GetSolidWhiteSprite();
+        rightFill.color = ModifierBonusFill;
+        rightFill.raycastTarget = false;
+        SetModifierBarSideFill(rightFill, 0.5f, 0.5f);
+        rightFill.enabled = false;
+
+        valueText = CreateText(barHost.transform, "0%", 18, TextAnchor.MiddleCenter, FontStyle.Bold);
+        var vtRt = valueText.GetComponent<RectTransform>();
+        StretchFull(vtRt);
+        valueText.color = new Color(0.92f, 0.92f, 0.92f, 1f);
     }
 
     static Image CreateBarRow(Transform parent, string name, string label, float barWidth, Color fillColor, out Text valueText)
