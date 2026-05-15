@@ -30,10 +30,16 @@ public class PlayerCharacter : BaseCharacter {
     [SerializeField] float healthRegenPerSecondFloor = 0.18f;
 
     [Tooltip("Added to floor/scaling: maxHealth × this per second at full ramp.")]
-    [SerializeField] float healthRegenMaxFractionOfMaxPerSecond = 0.0065f;
+    [SerializeField] float healthRegenMaxFractionOfMaxPerSecond = 0.006f;
 
-    [Tooltip("Extra HP/s at full ramp from player level.")]
-    [SerializeField] float healthRegenPerSecondPerLevelAtFull = 0.55f;
+    [Tooltip("Extra HP/s at full ramp from player level (full rate up to soft cap).")]
+    [SerializeField] float healthRegenPerSecondPerLevelAtFull = 0.42f;
+
+    [Tooltip("Above this level, per-level regen contribution is reduced to limit late-game kiting.")]
+    [SerializeField] int healthRegenPerLevelSoftCapLevel = 28;
+
+    [SerializeField, Range(0.2f, 1f)]
+    float healthRegenPerLevelAboveSoftCapMultiplier = 0.4f;
 
     /// <summary>Time.time of last enemy/missile damage via <see cref="ApplyIncomingDamage"/>. Negative = never damaged this run.</summary>
     float _lastIncomingDamageTime = -1f;
@@ -303,7 +309,19 @@ public class PlayerCharacter : BaseCharacter {
     public float GetPeakPassiveHealthRegenPerSecond()
     {
         return maxHealth * healthRegenMaxFractionOfMaxPerSecond
-               + curLevel * healthRegenPerSecondPerLevelAtFull;
+               + GetPassiveRegenLevelContribution(curLevel);
+    }
+
+    float GetPassiveRegenLevelContribution(int level)
+    {
+        int lv = Mathf.Max(0, level);
+        int cap = Mathf.Max(1, healthRegenPerLevelSoftCapLevel);
+        if (lv <= cap)
+            return lv * healthRegenPerSecondPerLevelAtFull;
+
+        float full = cap * healthRegenPerSecondPerLevelAtFull;
+        float tail = (lv - cap) * healthRegenPerSecondPerLevelAtFull * healthRegenPerLevelAboveSoftCapMultiplier;
+        return full + tail;
     }
 
     public bool skillAvailable(int levelNeeded)
