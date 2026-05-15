@@ -14,6 +14,9 @@ public sealed class GameplayHudView : MonoBehaviour
 {
     public static GameplayHudView Instance { get; private set; }
 
+    /// <summary>True while the boss-incoming fullscreen telegraph is playing (level-10 overlap with Geo Mania unlock).</summary>
+    public bool IsBossTelegraphActive => _bossIncomingRoutine != null;
+
     static readonly int[] SkillMinLevels = { 1, 1, 1, 2, 4, 6, 8, 10 };
 
     /// <summary>Multiplier applied after <see cref="Image.SetNativeSize"/> on the crosshair (1 = texture pixel size at current Canvas scale).</summary>
@@ -74,6 +77,15 @@ public sealed class GameplayHudView : MonoBehaviour
     Image[] _hitTakenEdges;
     Coroutine _hitTakenRoutine;
     Coroutine _bossIncomingRoutine;
+
+    // Geo Mania (skill slot 10): crosshair tint (black-line art cannot be tinted; swap to white-mask sprite).
+    Coroutine _geoManiaCelebrateRoutine;
+    bool _geoManiaVisualActive;
+    Color _geoManiaCrosshairColor = new Color(0.65f, 0.12f, 0.12f, 1f);
+    Sprite _crosshairSpriteNormal;
+    static readonly Dictionary<Sprite, Sprite> s_tintableCrosshairBySource = new Dictionary<Sprite, Sprite>();
+    const int TintableCrosshairMaskVersion = 2;
+    static int s_tintableCrosshairMaskVersionApplied;
 
     RectTransform _damageNumbersHost;
 
@@ -230,6 +242,15 @@ public sealed class GameplayHudView : MonoBehaviour
         _lastHealthFill = _lastManaFill = _lastExpFill = -1f;
         _lastHealthOverhealTint = -1;
         _lastManaOvermanaTint = -1;
+
+        _geoManiaVisualActive = false;
+        if (_geoManiaCelebrateRoutine != null)
+        {
+            StopCoroutine(_geoManiaCelebrateRoutine);
+            _geoManiaCelebrateRoutine = null;
+        }
+        ApplyGeoManiaVisuals();
+
         for (int i = 0; i < 8; i++)
         {
             _lastSkillMana[i] = null;
@@ -253,10 +274,220 @@ public sealed class GameplayHudView : MonoBehaviour
     {
         if (_crosshair == null || sprite == null)
             return;
-        _crosshair.sprite = sprite;
+        _crosshairSpriteNormal = sprite;
+        ApplyGeoManiaVisuals();
+        if (!_geoManiaVisualActive)
+        {
+            _crosshair.sprite = _crosshairSpriteNormal;
+            _crosshair.SetNativeSize();
+            var rt = _crosshair.rectTransform;
+            rt.sizeDelta *= CrosshairDisplayScale;
+        }
+    }
+
+    public void SetGeoManiaActive(bool active, Color crosshairColor)
+    {
+        if (!_built || _canvas == null)
+        {
+#if UNITY_2023_1_OR_NEWER
+            var ui = Object.FindAnyObjectByType<UserInterface>(FindObjectsInactive.Include);
+#else
+            var ui = FindObjectOfType<UserInterface>();
+#endif
+            if (ui != null)
+                EnsureBuilt(ui);
+        }
+        if (!_built)
+            return;
+
+        _geoManiaVisualActive = active;
+        _geoManiaCrosshairColor = crosshairColor;
+        ApplyGeoManiaVisuals();
+    }
+
+    /// <summary>Brief crosshair color flash on activation (after boss telegraph when applicable).</summary>
+    public void PlayGeoManiaActivatedFeedback(Color flashColor, float durationRealtime, float peakStrength)
+    {
+        if (!_built || _canvas == null)
+        {
+#if UNITY_2023_1_OR_NEWER
+            var ui = Object.FindAnyObjectByType<UserInterface>(FindObjectsInactive.Include);
+#else
+            var ui = FindObjectOfType<UserInterface>();
+#endif
+            if (ui != null)
+                EnsureBuilt(ui);
+        }
+        if (!_built || !_geoManiaVisualActive || _crosshair == null)
+            return;
+
+        bool reduced = CombatFeedback.ReducedMotion;
+        float dur = Mathf.Max(0.01f, durationRealtime);
+        float strength = Mathf.Clamp01(peakStrength);
+        if (reduced)
+        {
+            dur *= 0.75f;
+            strength *= 0.65f;
+        }
+
+        if (_geoManiaCelebrateRoutine != null)
+            StopCoroutine(_geoManiaCelebrateRoutine);
+        _geoManiaCelebrateRoutine = StartCoroutine(GeoManiaCelebrateRoutine(flashColor, dur, strength));
+    }
+
+    void ApplyGeoManiaVisuals()
+    {
+        if (!_built || _crosshair == null)
+            return;
+
+        if (_geoManiaVisualActive)
+        {
+            _crosshair.sprite = GetTintableCrosshairSprite(_crosshairSpriteNormal);
+            _crosshair.color = _geoManiaCrosshairColor;
+        }
+        else
+        {
+            if (_crosshairSpriteNormal != null)
+                _crosshair.sprite = _crosshairSpriteNormal;
+            _crosshair.color = Color.white;
+        }
+
         _crosshair.SetNativeSize();
         var rt = _crosshair.rectTransform;
         rt.sizeDelta *= CrosshairDisplayScale;
+    }
+
+    /// <summary>White mask matching the assigned crosshair silhouette so <see cref="Image.color"/> tints correctly.</summary>
+    static Sprite GetTintableCrosshairSprite(Sprite normalCrosshair)
+    {
+        if (s_tintableCrosshairMaskVersionApplied != TintableCrosshairMaskVersion)
+        {
+            s_tintableCrosshairBySource.Clear();
+            s_tintableCrosshairMaskVersionApplied = TintableCrosshairMaskVersion;
+        }
+
+        if (normalCrosshair != null)
+        {
+            if (s_tintableCrosshairBySource.TryGetValue(normalCrosshair, out var cached))
+                return cached;
+            var fromArt = BuildTintableCrosshairFromSprite(normalCrosshair);
+            if (fromArt != null)
+            {
+                s_tintableCrosshairBySource[normalCrosshair] = fromArt;
+                return fromArt;
+            }
+        }
+
+        return BuildFallbackTintableCrosshairSprite();
+    }
+
+    /// <summary>Copies the gameplay crosshair alpha into a white mask (black-line PNGs cannot be tinted directly).</summary>
+    static Sprite BuildTintableCrosshairFromSprite(Sprite source)
+    {
+        if (source == null || source.texture == null)
+            return null;
+
+        var tr = source.textureRect;
+        int w = Mathf.Max(1, (int)tr.width);
+        int h = Mathf.Max(1, (int)tr.height);
+        var srcTex = source.texture;
+
+        var rt = RenderTexture.GetTemporary(w, h, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB);
+        var scale = new Vector2(tr.width / srcTex.width, tr.height / srcTex.height);
+        var offset = new Vector2(tr.x / srcTex.width, tr.y / srcTex.height);
+        Graphics.Blit(srcTex, rt, scale, offset);
+
+        var prev = RenderTexture.active;
+        RenderTexture.active = rt;
+        var readable = new Texture2D(w, h, TextureFormat.RGBA32, false);
+        readable.ReadPixels(new Rect(0, 0, w, h), 0, 0);
+        readable.Apply();
+        RenderTexture.active = prev;
+        RenderTexture.ReleaseTemporary(rt);
+
+        var pixels = readable.GetPixels();
+        for (int i = 0; i < pixels.Length; i++)
+        {
+            var p = pixels[i];
+            // Use alpha only — transparent pixels are often (0,0,0,0); treating RGB as visibility fills the whole rect.
+            float a = p.a;
+            pixels[i] = a > 0.08f ? new Color(1f, 1f, 1f, a) : Color.clear;
+        }
+
+        readable.SetPixels(pixels);
+        readable.Apply();
+        readable.filterMode = FilterMode.Bilinear;
+        readable.wrapMode = TextureWrapMode.Clamp;
+
+        var pivotNorm = new Vector2(source.pivot.x / tr.width, source.pivot.y / tr.height);
+        return Sprite.Create(readable, new Rect(0f, 0f, w, h), pivotNorm, source.pixelsPerUnit);
+    }
+
+    /// <summary>Used only when no crosshair sprite is assigned yet.</summary>
+    static Sprite BuildFallbackTintableCrosshairSprite()
+    {
+        const int size = 128;
+        const int center = size / 2;
+        const int armLen = 54;
+        const int centerGap = 5;
+        const int baseHalfW = 8;
+
+        var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
+        var pixels = new Color[size * size];
+        for (int i = 0; i < pixels.Length; i++)
+            pixels[i] = Color.clear;
+
+        for (int y = 0; y < size; y++)
+        {
+            for (int x = 0; x < size; x++)
+            {
+                int dx = Mathf.Abs(x - center);
+                int dy = Mathf.Abs(y - center);
+                if (dx <= centerGap && dy <= centerGap)
+                    continue;
+
+                bool vertical = false;
+                if (dy <= armLen && dy > centerGap)
+                {
+                    float t = (dy - centerGap) / (float)(armLen - centerGap);
+                    int halfW = Mathf.Max(1, Mathf.RoundToInt(Mathf.Lerp(baseHalfW, 0f, t)));
+                    vertical = dx <= halfW;
+                }
+
+                bool horizontal = false;
+                if (dx <= armLen && dx > centerGap)
+                {
+                    float t = (dx - centerGap) / (float)(armLen - centerGap);
+                    int halfW = Mathf.Max(1, Mathf.RoundToInt(Mathf.Lerp(baseHalfW, 0f, t)));
+                    horizontal = dy <= halfW;
+                }
+
+                if (vertical || horizontal)
+                    pixels[y * size + x] = Color.white;
+            }
+        }
+
+        tex.SetPixels(pixels);
+        tex.Apply();
+        tex.filterMode = FilterMode.Bilinear;
+        return Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), 100f);
+    }
+
+    IEnumerator GeoManiaCelebrateRoutine(Color flashColor, float durationRealtime, float peakStrength)
+    {
+        Color rest = _geoManiaCrosshairColor;
+
+        float elapsed = 0f;
+        while (elapsed < durationRealtime)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            float u = Mathf.Sin(Mathf.Clamp01(elapsed / durationRealtime) * Mathf.PI);
+            _crosshair.color = Color.Lerp(rest, flashColor, u * peakStrength);
+            yield return null;
+        }
+
+        ApplyGeoManiaVisuals();
+        _geoManiaCelebrateRoutine = null;
     }
 
     public void ApplyBarSprites(Sprite health, Sprite mana, Sprite exp)
@@ -718,9 +949,18 @@ public sealed class GameplayHudView : MonoBehaviour
                 _crosshairRecentHeal.gameObject.SetActive(false);
             _lastHealthOverhealTint = -1;
             _lastManaOvermanaTint = -1;
+
+            _geoManiaVisualActive = false;
+            if (_geoManiaCelebrateRoutine != null)
+            {
+                StopCoroutine(_geoManiaCelebrateRoutine);
+                _geoManiaCelebrateRoutine = null;
+            }
+            ApplyGeoManiaVisuals();
             return;
         }
         SetHudVisible(true);
+        ApplyGeoManiaVisuals();
 
         if (_lastLevel != curLevel)
         {
