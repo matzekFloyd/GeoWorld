@@ -80,6 +80,14 @@ crashlytics-build.properties
 .plastic/
 ignore.conf
 
+# Asset audit outputs (regenerate: GeoWorld → Assets → Audit Unused Assets)
+/audit-reports/unused-assets-*.csv
+/audit-reports/unused-assets-*-summary.txt
+/audit-reports/unity-audit.log
+/audit-reports/unused-assets-grep-*.csv
+/audit-reports/unused-assets-grep-*-summary.txt
+Assets/_Quarantine/UnusedAssetAudit_*/
+
 # OS junk
 .DS_Store
 .DS_Store?

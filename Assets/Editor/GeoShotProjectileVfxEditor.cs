@@ -13,29 +13,55 @@ static class GeoShotProjectileVfxEditor
     [MenuItem("GeoWorld/Projectiles/Ensure GeoShot Projectile VFX", false, 50)]
     static void EnsureGeoShotProjectileVfx()
     {
-        if (!TryLoadPrefabRoot(out var root))
-            return;
+        try
+        {
+            var removed = RepairPrefabAtPath(PrefabPath);
+            AssetDatabase.SaveAssets();
+            Debug.Log($"[GeoWorld] GeoShot projectile VFX baked. Removed {removed} missing script slot(s): " + PrefabPath);
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError("[GeoWorld] GeoShot projectile VFX bake failed: " + ex.Message);
+        }
+    }
 
+    /// <summary>Batchmode: Unity -executeMethod GeoShotProjectileVfxEditor.RepairGeoShotPrefabBatchAndQuit</summary>
+    public static void RepairGeoShotPrefabBatchAndQuit()
+    {
+        try
+        {
+            var removed = RepairPrefabAtPath(PrefabPath);
+            AssetDatabase.SaveAssets();
+            Debug.Log($"[GeoWorld] GeoShotProjectile repair done. Removed {removed} missing script slot(s).");
+            EditorApplication.Exit(0);
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError("[GeoWorld] GeoShotProjectile repair failed: " + ex);
+            EditorApplication.Exit(1);
+        }
+    }
+
+    static int RepairPrefabAtPath(string prefabPath)
+    {
+        if (!System.IO.File.Exists(prefabPath))
+            throw new System.IO.FileNotFoundException("Prefab not found", prefabPath);
+
+        var root = PrefabUtility.LoadPrefabContents(prefabPath);
         try
         {
             var removed = RemoveAllMissingScripts(root);
-            if (removed > 0)
-                Debug.Log($"[GeoWorld] Removed {removed} missing script slot(s) from GeoShotProjectile prefab.");
-
             var boot = root.GetComponent<GeoShotProjectileVfxBootstrap>();
             if (boot == null)
                 boot = root.AddComponent<GeoShotProjectileVfxBootstrap>();
-
             boot.RebuildForPrefab();
-            SavePrefabOrReport(root);
+            PrefabUtility.SaveAsPrefabAsset(root, prefabPath);
+            return removed;
         }
         finally
         {
             PrefabUtility.UnloadPrefabContents(root);
         }
-
-        AssetDatabase.SaveAssets();
-        Debug.Log("[GeoWorld] GeoShot projectile VFX baked into prefab: " + PrefabPath);
     }
 
     [MenuItem("GeoWorld/Projectiles/Strip missing scripts (GeoShot prefab only)", false, 51)]

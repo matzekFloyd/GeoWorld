@@ -14,8 +14,8 @@ public class GeoShotProjectile : GeoShot
     int _maxBounces;
     float _speedRetention = 0.9f;
     Coroutine _lifetimeRoutine;
-    /// <summary>Enemy root instance IDs already damaged by this projectile.</summary>
-    readonly HashSet<int> _damagedEnemyRootIds = new HashSet<int>();
+    /// <summary>Enemy roots already damaged by this projectile.</summary>
+    readonly HashSet<EntityId> _damagedEnemyRootIds = new HashSet<EntityId>();
 
     static PhysicsMaterial s_bounceMaterial;
 
@@ -193,7 +193,7 @@ public class GeoShotProjectile : GeoShot
         if (!TryResolveEnemyFromCollider(collision.collider, out var enemyRoot, out var enemyAi, out var greaterAi))
             return false;
 
-        int rootId = enemyRoot.GetInstanceID();
+        EntityId rootId = enemyRoot.GetEntityId();
         if (_damagedEnemyRootIds.Contains(rootId))
             return false;
 

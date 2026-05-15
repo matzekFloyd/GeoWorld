@@ -60,10 +60,26 @@ public sealed class GeoWorldObjectPools : MonoBehaviour
             return null;
 
         EntityId key = prefab.GetEntityId();
-        GameObject inst;
+        GameObject inst = null;
         if (_inactive.TryGetValue(key, out var stack) && stack.Count > 0)
-            inst = stack.Pop();
-        else
+        {
+            while (stack.Count > 0)
+            {
+                var candidate = stack.Pop();
+                if (candidate == null)
+                    continue;
+                if (HasMissingScript(candidate))
+                {
+                    Object.Destroy(candidate);
+                    continue;
+                }
+
+                inst = candidate;
+                break;
+            }
+        }
+
+        if (inst == null)
         {
             inst = Object.Instantiate(prefab);
             var po = inst.GetComponent<PooledObject>();
@@ -110,6 +126,20 @@ public sealed class GeoWorldObjectPools : MonoBehaviour
         }
 
         stack.Push(instance);
+    }
+
+    static bool HasMissingScript(GameObject go)
+    {
+        if (go == null)
+            return false;
+        var components = go.GetComponentsInChildren<Component>(true);
+        for (var i = 0; i < components.Length; i++)
+        {
+            if (components[i] == null)
+                return true;
+        }
+
+        return false;
     }
 
     static void ResetRigidbody(GameObject go)

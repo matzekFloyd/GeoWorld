@@ -41,7 +41,7 @@ static class GeoPhysicsPlayerVfxEditor
         if (tagged != null)
             return tagged;
 
-        var pcs = Object.FindObjectsByType<PlayerCharacter>(FindObjectsSortMode.None);
+        var pcs = Object.FindObjectsByType<PlayerCharacter>();
         for (int i = 0; i < pcs.Length; i++)
         {
             if (pcs[i] != null && pcs[i].gameObject.name == "Player")
